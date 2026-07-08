@@ -1,4 +1,5 @@
 import Background from "@/components/Background";
+import CursorGlow from "@/components/marketing/CursorGlow";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingHero from "@/components/marketing/MarketingHero";
 import Benefits from "@/components/marketing/Benefits";
@@ -11,6 +12,7 @@ export default function LandingPage() {
   return (
     <div className="relative">
       <Background />
+      <CursorGlow />
       <MarketingHeader />
       <main className="relative z-10">
         <MarketingHero />

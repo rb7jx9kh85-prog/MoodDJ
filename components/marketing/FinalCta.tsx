@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { fadeUp } from "@/lib/animations";
+import Magnetic from "@/components/marketing/Magnetic";
 
 export default function FinalCta() {
   return (
@@ -30,13 +31,15 @@ export default function FinalCta() {
           <p className="mx-auto mt-4 max-w-md text-muted">
             Connecte ton compte, décris ton mood, et laisse Mood DJ s&apos;occuper du reste.
           </p>
-          <Link
-            href="/login"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-spotify px-7 py-3.5 text-sm font-semibold text-black transition-transform hover:scale-105 hover:bg-spotify-bright"
-          >
-            Commencer gratuitement
-            <ArrowRight className="size-4" />
-          </Link>
+          <Magnetic strength={14} className="mt-8">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 rounded-full bg-spotify px-7 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
+            >
+              Commencer gratuitement
+              <ArrowRight className="size-4" />
+            </Link>
+          </Magnetic>
         </div>
       </motion.div>
     </section>

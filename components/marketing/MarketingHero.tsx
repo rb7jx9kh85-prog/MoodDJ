@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { SendHorizonal, Sparkles } from "lucide-react";
 import { fadeUp, staggerContainer } from "@/lib/animations";
+import ParticleField from "@/components/marketing/ParticleField";
+import Magnetic from "@/components/marketing/Magnetic";
 
 export default function MarketingHero() {
   const router = useRouter();
   const [vibe, setVibe] = useState("");
+
+  // Vanilla-feeling scroll parallax: the title drifts up/fades as you scroll
+  // past the hero, driven directly by window.scrollY.
+  const scrollY = useMotionValue(0);
+  const smoothScroll = useSpring(scrollY, { stiffness: 90, damping: 20, mass: 0.3 });
+  const titleY = useTransform(smoothScroll, [0, 500], [0, -60]);
+  const titleOpacity = useTransform(smoothScroll, [0, 400], [1, 0.35]);
+
+  useEffect(() => {
+    const onScroll = () => scrollY.set(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [scrollY]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -17,8 +32,11 @@ export default function MarketingHero() {
   }
 
   return (
-    <section className="relative px-6 pb-24 pt-40 sm:pt-48">
+    <section className="relative overflow-hidden px-6 pb-24 pt-40 sm:pt-48">
+      <ParticleField />
+
       <motion.div
+        style={{ y: titleY, opacity: titleOpacity }}
         initial="hidden"
         animate="visible"
         variants={staggerContainer}
@@ -61,13 +79,15 @@ export default function MarketingHero() {
             placeholder="Ex : soirée d'été sur un rooftop, coucher de soleil…"
             className="h-11 flex-1 bg-transparent text-sm text-soft placeholder:text-muted focus:outline-none"
           />
-          <button
-            type="submit"
-            className="spotify-glow flex h-11 shrink-0 items-center gap-2 rounded-full bg-spotify px-5 text-sm font-semibold text-black transition-transform hover:scale-105 hover:bg-spotify-bright"
-          >
-            <span className="hidden sm:block">Générer</span>
-            <SendHorizonal className="size-4" />
-          </button>
+          <Magnetic strength={10}>
+            <button
+              type="submit"
+              className="spotify-glow flex h-11 shrink-0 items-center gap-2 rounded-full bg-spotify px-5 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
+            >
+              <span className="hidden sm:block">Générer</span>
+              <SendHorizonal className="size-4" />
+            </button>
+          </Magnetic>
         </motion.form>
 
         <motion.p variants={fadeUp} className="mt-4 text-xs text-muted">

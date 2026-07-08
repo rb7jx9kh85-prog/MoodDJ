@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import LogoMark from "@/components/LogoMark";
+import Magnetic from "@/components/marketing/Magnetic";
 
 const links = [
   { name: "Fonctionnalités", href: "#benefits" },
@@ -49,12 +50,14 @@ export default function MarketingHeader() {
           >
             Se connecter
           </Link>
-          <Link
-            href="/login"
-            className="spotify-glow rounded-full bg-spotify px-4 py-2 text-sm font-semibold text-black transition-transform hover:scale-105 hover:bg-spotify-bright"
-          >
-            Essayer gratuitement
-          </Link>
+          <Magnetic strength={10}>
+            <Link
+              href="/login"
+              className="spotify-glow block rounded-full bg-spotify px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
+            >
+              Essayer gratuitement
+            </Link>
+          </Magnetic>
         </div>
       </div>
     </header>

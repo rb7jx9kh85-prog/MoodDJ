@@ -74,23 +74,54 @@ export async function signOutUser(): Promise<void> {
   await signOut(getFirebaseAuth());
 }
 
+export class AuthTimeoutError extends Error {
+  constructor() {
+    super("Firebase auth request timed out");
+    this.name = "AuthTimeoutError";
+  }
+}
+
+/**
+ * Firebase's popup/reCAPTCHA flows can hang indefinitely (blocked popup,
+ * unauthorized domain, ad-blocker eating the reCAPTCHA script) instead of
+ * rejecting — wrap every auth call so the UI always recovers.
+ */
+export function withAuthTimeout<T>(promise: Promise<T>, ms = 15000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new AuthTimeoutError()), ms)),
+  ]);
+}
+
 /** Human-readable message for the common Firebase Auth error codes. */
 export function friendlyAuthError(err: unknown): string {
+  if (err instanceof AuthTimeoutError) {
+    return "La connexion prend trop de temps. Vérifie ta connexion internet et réessaie.";
+  }
   const code = (err as { code?: string })?.code ?? "";
   switch (code) {
     case "auth/email-already-in-use":
-      return "An account already exists with this email.";
+      return "Un compte existe déjà avec cet email.";
     case "auth/invalid-email":
-      return "That email address looks invalid.";
+      return "Cette adresse email est invalide.";
     case "auth/weak-password":
-      return "Choose a password with at least 6 characters.";
+      return "Choisis un mot de passe d'au moins 6 caractères.";
     case "auth/user-not-found":
     case "auth/wrong-password":
     case "auth/invalid-credential":
-      return "Incorrect email or password.";
+      return "Email ou mot de passe incorrect.";
     case "auth/popup-closed-by-user":
-      return "Sign-in was cancelled.";
+    case "auth/cancelled-popup-request":
+      return "Connexion annulée.";
+    case "auth/popup-blocked":
+      return "Ton navigateur a bloqué la fenêtre de connexion. Autorise les popups pour ce site.";
+    case "auth/unauthorized-domain":
+      return "Ce domaine n'est pas autorisé côté Firebase (Authentication → Settings → Authorized domains).";
+    case "auth/operation-not-allowed":
+      return "Ce mode de connexion n'est pas activé côté Firebase (Authentication → Sign-in method).";
+    case "auth/network-request-failed":
+      return "Problème réseau. Vérifie ta connexion et réessaie.";
     default:
-      return "Something went wrong. Please try again.";
+      return code ? `Erreur (${code}). Réessaie.` : "Une erreur est survenue. Réessaie.";
   }
 }

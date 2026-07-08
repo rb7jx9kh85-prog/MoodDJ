@@ -13,6 +13,7 @@ import {
   signInWithGoogle,
   signInWithApple,
   friendlyAuthError,
+  withAuthTimeout,
 } from "@/lib/firebase-auth";
 import { fadeUp } from "@/lib/animations";
 
@@ -47,12 +48,13 @@ function LoginForm() {
     setLoading("email");
     try {
       if (mode === "signup") {
-        await signUpWithEmail(email, password, name);
+        await withAuthTimeout(signUpWithEmail(email, password, name));
       } else {
-        await signInWithEmail(email, password);
+        await withAuthTimeout(signInWithEmail(email, password));
       }
       goToApp();
     } catch (err) {
+      console.error("[login] email auth failed", err);
       setError(friendlyAuthError(err));
     } finally {
       setLoading(null);
@@ -63,9 +65,10 @@ function LoginForm() {
     setError(null);
     setLoading("google");
     try {
-      await signInWithGoogle();
+      await withAuthTimeout(signInWithGoogle());
       goToApp();
     } catch (err) {
+      console.error("[login] google auth failed", err);
       setError(friendlyAuthError(err));
     } finally {
       setLoading(null);
@@ -76,9 +79,10 @@ function LoginForm() {
     setError(null);
     setLoading("apple");
     try {
-      await signInWithApple();
+      await withAuthTimeout(signInWithApple());
       goToApp();
     } catch (err) {
+      console.error("[login] apple auth failed", err);
       setError(friendlyAuthError(err));
     } finally {
       setLoading(null);
