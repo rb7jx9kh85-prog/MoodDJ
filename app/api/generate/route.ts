@@ -14,6 +14,7 @@ import {
   addTracksToPlaylist,
   refreshSpotifyToken,
   SpotifyAuthError,
+  SpotifyApiError,
 } from "@/lib/spotify";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
 import { sanitizePrompt, dedupeByUri, shuffle, MAX_PROMPT_LENGTH } from "@/lib/utils";
@@ -169,6 +170,8 @@ export async function POST(req: NextRequest) {
         401
       );
     }
+    const status = err instanceof SpotifyApiError ? err.status : undefined;
+    console.error("[/api/generate] Spotify error", { status, message: (err as Error)?.message, err });
     return errorResponse(
       "Spotify could not create the playlist right now. Please reconnect and try again.",
       "spotify_error",
