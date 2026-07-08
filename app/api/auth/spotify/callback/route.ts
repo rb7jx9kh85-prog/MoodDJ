@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 function redirectWithError(reason: string) {
-  return NextResponse.redirect(`${appUrl}/?error=${encodeURIComponent(reason)}`);
+  return NextResponse.redirect(`${appUrl}/app?error=${encodeURIComponent(reason)}`);
 }
 
 /** Handle Spotify's redirect back: verify state, exchange code, store tokens. */
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   try {
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForTokens(code);
     await setTokenCookies(accessToken, refreshToken, expiresIn);
-    return NextResponse.redirect(`${appUrl}/?connected=1`);
+    return NextResponse.redirect(`${appUrl}/app?connected=1`);
   } catch {
     return redirectWithError("token_exchange_failed");
   }

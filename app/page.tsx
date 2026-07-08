@@ -1,16 +1,25 @@
-import MoodDJApp from "@/components/MoodDJApp";
-import { isConnected } from "@/lib/auth";
+import Background from "@/components/Background";
+import MarketingHeader from "@/components/marketing/MarketingHeader";
+import MarketingHero from "@/components/marketing/MarketingHero";
+import Benefits from "@/components/marketing/Benefits";
+import PreviewShowcase from "@/components/marketing/PreviewShowcase";
+import Testimonials from "@/components/marketing/Testimonials";
+import FinalCta from "@/components/marketing/FinalCta";
+import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-export const dynamic = "force-dynamic";
-
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const connected = await isConnected();
-  const params = await searchParams;
-  const authError = typeof params.error === "string" ? params.error : undefined;
-
-  return <MoodDJApp initialConnected={connected} authError={authError} />;
+export default function LandingPage() {
+  return (
+    <div className="relative">
+      <Background />
+      <MarketingHeader />
+      <main className="relative z-10">
+        <MarketingHero />
+        <Benefits />
+        <PreviewShowcase />
+        <Testimonials />
+        <FinalCta />
+      </main>
+      <MarketingFooter />
+    </div>
+  );
 }
