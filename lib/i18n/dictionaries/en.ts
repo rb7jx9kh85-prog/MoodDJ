@@ -1,0 +1,200 @@
+import type { Dictionary } from "@/lib/i18n/types";
+
+const en: Dictionary = {
+  nav: {
+    features: "Features",
+    preview: "Preview",
+    pricing: "Pricing",
+    reviews: "Reviews",
+    signIn: "Sign in",
+    tryFree: "Try for free",
+  },
+  hero: {
+    badge: "Powered by AI + your Spotify account",
+    titleLine1: "Describe your",
+    titleHighlight: "mood",
+    titleLine2: "Walk away with the playlist.",
+    subtitle:
+      "Mood DJ turns a sentence — a vibe, a scene, an emotion — into a real Spotify playlist, created directly on your account in seconds.",
+    placeholder: "E.g. summer evening on a rooftop, sunset…",
+    generate: "Generate",
+    freeNote: "Free to start · No credit card required",
+  },
+  benefits: {
+    title: "Built for",
+    titleHighlight: "the moment",
+    titleSuffix: ", not the perfect playlist",
+    subtitle:
+      "Mood DJ doesn't try to guess your taste forever — it captures how you feel right now.",
+    items: [
+      {
+        title: "Actually gets the vibe",
+        description:
+          "Describe a scene, an emotion or a mood in plain language — the AI turns it into a real musical plan, not just keywords.",
+      },
+      {
+        title: "Playlist ready in seconds",
+        description: "Search, selection and creation happen in a single pass. No manual sorting, no back and forth.",
+      },
+      {
+        title: "Straight to your Spotify",
+        description:
+          "No copies, no external links: the playlist is created on your own account, ready to listen in the app.",
+      },
+      {
+        title: "Regenerate as many times as you like",
+        description: "Not convinced by the first try? Regenerate and refine the mood until you find the right tempo.",
+      },
+    ],
+  },
+  preview: {
+    eyebrow: "Preview",
+    title: "From sentence to",
+    titleHighlight: "real playlist",
+    description:
+      "Every track is chosen based on the energy, genre and scene you describe — then added directly to your Spotify account, with a cover and description generated for the occasion.",
+    bullets: [
+      "Analyzes the mood, energy and tempo you're after",
+      "Selects real tracks from the Spotify catalog",
+      "Playlist named, described and ready to share",
+    ],
+    playlistTitle: "Rooftop, sunset",
+    playlistMeta: "Mood DJ playlist · 18 tracks",
+    ctaListen: "Listen on Spotify",
+  },
+  testimonials: {
+    title: "They let",
+    titleHighlight: "the AI choose",
+    items: [
+      {
+        name: "Léa Fontaine",
+        role: "Hosts get-togethers with friends",
+        content:
+          "I typed \"summer drinks, terrace, vibe slowly picking up\" and the playlist was literally perfect. No more spending 40 minutes hunting for tracks before people show up.",
+      },
+      {
+        name: "Malik Benali",
+        role: "Independent fitness coach",
+        content:
+          "I generate a different playlist for every session depending on the class intensity. My clients regularly ask me what the app is called.",
+      },
+      {
+        name: "Chloé Rey",
+        role: "Architecture student",
+        content:
+          "For deep focus work, describing the vibe I want works much better than searching for a ready-made playlist on Spotify. One downside: sometimes too many already-familiar tracks — I'd like more discoveries.",
+      },
+    ],
+  },
+  cta: {
+    title: "Your next playlist is",
+    titleHighlight: "one sentence away",
+    subtitle: "Connect your account, describe your mood, and let Mood DJ handle the rest.",
+    button: "Start for free",
+  },
+  footer: {
+    pricing: "Pricing",
+    signIn: "Sign in",
+    copyright: "Mood DJ. Not affiliated with Spotify.",
+  },
+  pricing: {
+    badge: "No commitment, cancel anytime",
+    title: "Generate, or generate",
+    titleHighlight: "and publish",
+    subtitle: "Mood DJ always generates your playlist. Publishing to Spotify is up to you.",
+    plans: [
+      {
+        name: "Free",
+        tagline: "Discover Mood DJ",
+        period: "forever",
+        cta: "Start for free",
+        features: [
+          { text: "1 free generated playlist", included: true },
+          { text: "AI generation with real Spotify searches", included: true },
+          { text: "No credit card required", included: true },
+          { text: "Publish to Spotify", included: false },
+        ],
+      },
+      {
+        name: "Flow",
+        tagline: "Everything you need to generate the perfect playlist.",
+        period: "/ month",
+        cta: "Choose Flow",
+        features: [
+          { text: "Unlimited AI playlist generation", included: true },
+          { text: "Create a playlist from any mood or prompt", included: true },
+          { text: "Smart song recommendations", included: true },
+          { text: "Fast generation", included: true },
+          { text: "Your playlist history saved", included: true },
+          { text: "Access to all supported languages", included: true },
+          { text: "One-click Spotify sync", included: false },
+        ],
+      },
+      {
+        name: "Flow Sync",
+        tagline: "Everything in Flow, plus instant Spotify integration.",
+        period: "/ month",
+        cta: "Choose Flow Sync",
+        features: [
+          { text: "Everything included in Flow", included: true },
+          { text: "One-click Spotify sync", included: true },
+          { text: "Automatic playlist creation in your Spotify account", included: true },
+          { text: "Update existing playlists", included: true },
+          { text: "Unlimited Spotify exports", included: true },
+          { text: "Priority generation speed", included: true },
+          { text: "Early access to new features", included: true },
+        ],
+      },
+      {
+        name: "Lifetime",
+        tagline: "Pay once, keep Flow Sync forever.",
+        period: "one-time",
+        cta: "Unlock for life",
+        features: [
+          { text: "Everything included in Flow Sync", included: true },
+          { text: "One-time payment, no subscription", included: true },
+          { text: "Unlimited generation, forever", included: true },
+          { text: "Unlimited Spotify sync, forever", included: true },
+          { text: "Early access to new features", included: true },
+        ],
+      },
+    ],
+  },
+  login: {
+    signIn: "Sign in",
+    signUp: "Create an account",
+    namePlaceholder: "Your name",
+    emailPlaceholder: "Email address",
+    passwordPlaceholder: "Password",
+    submitSignIn: "Sign in",
+    submitSignUp: "Create my account",
+    or: "or",
+    google: "Continue with Google",
+    apple: "Continue with Apple",
+    consent: "By continuing, you agree that Mood DJ creates a profile for your account.",
+  },
+  app: {
+    spotifyConnected: "Spotify connected",
+    connectSpotify: "Connect Spotify",
+    signIn: "Sign in",
+    generatePlaceholder: "Describe a vibe… e.g. driving alone at night under the rain, melancholic but classy",
+    generateBtn: "Generate playlist",
+    generatePushBtn: "Generate & push to Spotify",
+    connectToPush: "Connect to push to Spotify",
+    hintConnected: "Generate a preview, or push it straight to your Spotify account.",
+    hintNotConnected:
+      "You can generate a preview without connecting — Spotify is only needed to push the playlist.",
+    charsLeft: "characters left",
+  },
+  settings: {
+    title: "Settings",
+    back: "Back",
+    language: "Language",
+    languageDescription: "Change the interface language anytime.",
+    account: "Account",
+    notSignedIn: "Not signed in",
+    plan: "Current plan",
+  },
+};
+
+export default en;

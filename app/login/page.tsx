@@ -16,6 +16,8 @@ import {
   withAuthTimeout,
 } from "@/lib/firebase-auth";
 import { fadeUp } from "@/lib/animations";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function LoginPage() {
   return (
@@ -26,6 +28,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get("vibe") ?? "";
@@ -94,10 +97,13 @@ function LoginForm() {
       <Background />
 
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16">
-        <Link href="/" className="mb-8 flex items-center gap-2.5">
-          <LogoMark size={36} />
-          <span className="text-lg font-semibold tracking-tight text-soft">Mood DJ</span>
-        </Link>
+        <div className="mb-8 flex w-full max-w-md items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2.5">
+            <LogoMark size={36} />
+            <span className="text-lg font-semibold tracking-tight text-soft">Mood DJ</span>
+          </Link>
+          <LanguageSelector />
+        </div>
 
         <motion.div
           initial="hidden"
@@ -113,7 +119,7 @@ function LoginForm() {
                 mode === "signin" ? "bg-spotify text-black" : "text-muted hover:text-soft"
               }`}
             >
-              Se connecter
+              {t.login.signIn}
             </button>
             <button
               type="button"
@@ -122,7 +128,7 @@ function LoginForm() {
                 mode === "signup" ? "bg-spotify text-black" : "text-muted hover:text-soft"
               }`}
             >
-              Créer un compte
+              {t.login.signUp}
             </button>
           </div>
 
@@ -143,7 +149,7 @@ function LoginForm() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ton nom"
+                    placeholder={t.login.namePlaceholder}
                     className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 pl-11 pr-4 text-sm text-soft placeholder:text-muted focus:border-spotify/50 focus:outline-none focus:ring-2 focus:ring-spotify/30"
                   />
                 </div>
@@ -156,7 +162,7 @@ function LoginForm() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Adresse email"
+                  placeholder={t.login.emailPlaceholder}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 pl-11 pr-4 text-sm text-soft placeholder:text-muted focus:border-spotify/50 focus:outline-none focus:ring-2 focus:ring-spotify/30"
                 />
               </div>
@@ -169,7 +175,7 @@ function LoginForm() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mot de passe"
+                  placeholder={t.login.passwordPlaceholder}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 pl-11 pr-4 text-sm text-soft placeholder:text-muted focus:border-spotify/50 focus:outline-none focus:ring-2 focus:ring-spotify/30"
                 />
               </div>
@@ -186,14 +192,14 @@ function LoginForm() {
                 className="spotify-glow flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-spotify font-semibold text-black transition-transform hover:scale-[1.02] hover:bg-spotify-bright disabled:opacity-60"
               >
                 {loading === "email" && <Loader2 className="size-4 animate-spin" />}
-                {mode === "signup" ? "Créer mon compte" : "Se connecter"}
+                {mode === "signup" ? t.login.submitSignUp : t.login.submitSignIn}
               </button>
             </motion.form>
           </AnimatePresence>
 
           <div className="my-6 flex items-center gap-3 text-xs text-muted">
             <span className="h-px flex-1 bg-white/10" />
-            ou
+            {t.login.or}
             <span className="h-px flex-1 bg-white/10" />
           </div>
 
@@ -209,7 +215,7 @@ function LoginForm() {
               ) : (
                 <GoogleIcon />
               )}
-              Continuer avec Google
+              {t.login.google}
             </button>
 
             <button
@@ -219,14 +225,12 @@ function LoginForm() {
               className="hover-lift flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 text-sm font-medium text-soft disabled:opacity-60"
             >
               {loading === "apple" ? <Loader2 className="size-4 animate-spin" /> : <AppleIcon />}
-              Continuer avec Apple
+              {t.login.apple}
             </button>
           </div>
         </motion.div>
 
-        <p className="mt-8 max-w-sm text-center text-xs text-muted">
-          En continuant, tu acceptes que Mood DJ crée un profil pour ton compte.
-        </p>
+        <p className="mt-8 max-w-sm text-center text-xs text-muted">{t.login.consent}</p>
       </div>
     </div>
   );

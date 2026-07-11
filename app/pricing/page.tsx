@@ -8,71 +8,20 @@ import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-type Feature = { text: string; included: boolean };
-
-const plans: {
-  name: string;
-  tagline: string;
-  price: string;
-  period: string;
-  highlighted: boolean;
-  badge?: string;
-  cta: string;
-  features: Feature[];
-}[] = [
-  {
-    name: "Free",
-    tagline: "Pour découvrir Mood DJ",
-    price: "0 CHF",
-    period: "toujours",
-    highlighted: false,
-    cta: "Commencer gratuitement",
-    features: [
-      { text: "1 playlist générée gratuitement", included: true },
-      { text: "Génération par IA avec vraies recherches Spotify", included: true },
-      { text: "Aucune carte bancaire requise", included: true },
-      { text: "Publication sur Spotify", included: false },
-    ],
-  },
-  {
-    name: "Flow",
-    tagline: "Tout ce qu'il faut pour générer la playlist parfaite.",
-    price: "4,90 CHF",
-    period: "/ mois",
-    highlighted: false,
-    cta: "Choisir Flow",
-    features: [
-      { text: "Génération de playlists IA illimitée", included: true },
-      { text: "Crée une playlist à partir de n'importe quel mood ou prompt", included: true },
-      { text: "Recommandations de titres intelligentes", included: true },
-      { text: "Génération rapide", included: true },
-      { text: "Historique de tes playlists sauvegardé", included: true },
-      { text: "Accès à toutes les langues supportées", included: true },
-      { text: "Synchronisation Spotify en un clic", included: false },
-    ],
-  },
-  {
-    name: "Flow Sync",
-    tagline: "Tout Flow, plus l'intégration Spotify instantanée.",
-    price: "7,90 CHF",
-    period: "/ mois",
-    highlighted: true,
-    badge: "⭐ Le plus populaire",
-    cta: "Choisir Flow Sync",
-    features: [
-      { text: "Tout ce qui est inclus dans Flow", included: true },
-      { text: "Synchronisation Spotify en un clic", included: true },
-      { text: "Création automatique de la playlist sur ton compte Spotify", included: true },
-      { text: "Mise à jour des playlists existantes", included: true },
-      { text: "Exports Spotify illimités", included: true },
-      { text: "Génération prioritaire", included: true },
-      { text: "Accès anticipé aux nouvelles fonctionnalités", included: true },
-    ],
-  },
+// Prices and layout flags are locale-independent — only copy comes from the dictionary.
+const planMeta = [
+  { price: "0 CHF", highlighted: false, badge: undefined as string | undefined },
+  { price: "4,90 CHF", highlighted: false, badge: undefined as string | undefined },
+  { price: "7,90 CHF", highlighted: true, badge: "⭐" },
+  { price: "15 CHF", highlighted: false, badge: "🔓" },
 ];
 
 export default function PricingPage() {
+  const { t } = useLanguage();
+  const plans = t.pricing.plans.map((p, i) => ({ ...p, ...planMeta[i] }));
+
   return (
     <div className="relative">
       <Background />
@@ -90,13 +39,13 @@ export default function PricingPage() {
             className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-muted"
           >
             <Sparkles className="size-3.5 text-spotify-bright" />
-            Sans engagement, résiliable à tout moment
+            {t.pricing.badge}
           </motion.div>
           <motion.h1 variants={fadeUp} className="text-4xl font-semibold sm:text-5xl">
-            Génère, ou génère <span className="text-gradient">et publie</span>
+            {t.pricing.title} <span className="text-gradient">{t.pricing.titleHighlight}</span>
           </motion.h1>
           <motion.p variants={fadeUp} className="mt-4 text-muted">
-            Mood DJ génère toujours ta playlist. Passer sur Spotify, c&apos;est à toi de choisir.
+            {t.pricing.subtitle}
           </motion.p>
         </motion.div>
 
@@ -104,7 +53,7 @@ export default function PricingPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3"
+          className="mx-auto mt-16 grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
         >
           {plans.map((plan) => (
             <motion.div

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { MAX_PROMPT_LENGTH } from "@/lib/utils";
 import { fadeUp } from "@/lib/animations";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 const EXAMPLES = [
   "Driving at night under the rain",
@@ -31,6 +32,7 @@ export default function MoodInput({
   loading,
   connected,
 }: MoodInputProps) {
+  const { t } = useLanguage();
   const remaining = MAX_PROMPT_LENGTH - value.length;
   const canGenerate = value.trim().length > 0 && !loading;
 
@@ -46,14 +48,16 @@ export default function MoodInput({
               onGenerate(connected);
             }
           }}
-          placeholder="Describe a vibe… e.g. driving alone at night under the rain, melancholic but classy"
+          placeholder={t.app.generatePlaceholder}
           rows={3}
           maxLength={MAX_PROMPT_LENGTH}
           className="w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-base text-soft placeholder:text-muted/60 focus:outline-none sm:text-lg"
         />
 
         <div className="flex flex-col gap-3 px-3 pb-1 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-xs text-muted/70">{remaining} characters left</span>
+          <span className="text-xs text-muted/70">
+            {remaining} {t.app.charsLeft}
+          </span>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <motion.button
@@ -63,7 +67,7 @@ export default function MoodInput({
               disabled={!canGenerate}
               className="hover-lift inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-soft transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {loading ? "Generating…" : "Generate playlist"}
+              {loading ? "…" : t.app.generateBtn}
             </motion.button>
 
             {connected ? (
@@ -75,7 +79,7 @@ export default function MoodInput({
                 className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <SpotifyGlyph />
-                Generate &amp; push to Spotify
+                {t.app.generatePushBtn}
               </motion.button>
             ) : (
               <motion.button
@@ -85,7 +89,7 @@ export default function MoodInput({
                 className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
               >
                 <SpotifyGlyph />
-                Connect to push to Spotify
+                {t.app.connectToPush}
               </motion.button>
             )}
           </div>
@@ -93,9 +97,7 @@ export default function MoodInput({
       </div>
 
       <p className="mt-3 text-center text-sm text-muted">
-        {connected
-          ? "Generate a preview, or push it straight to your Spotify account."
-          : "You can generate a preview without connecting — Spotify is only needed to push the playlist."}
+        {connected ? t.app.hintConnected : t.app.hintNotConnected}
       </p>
 
       {/* Example vibes */}

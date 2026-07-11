@@ -6,6 +6,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { ApiError, GeneratedPlaylistResponse, PushToSpotifyResponse } from "@/types";
 import { useFirebaseUser } from "@/lib/useFirebaseUser";
 import { signOutUser } from "@/lib/firebase-auth";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import LanguageSelector from "@/components/LanguageSelector";
+import { Settings } from "lucide-react";
 import Hero from "./Hero";
 import MoodInput from "./MoodInput";
 import LoadingExperience from "./LoadingExperience";
@@ -26,6 +29,7 @@ function goToSpotifyLogin() {
 }
 
 export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user: firebaseUser, checked: authChecked } = useFirebaseUser();
   const [connected, setConnected] = useState(initialConnected);
@@ -157,6 +161,14 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       <div className="mb-2 flex items-center justify-between gap-2">
         <AnimatedLogo size={32} withWordmark />
         <div className="flex items-center gap-2">
+          <LanguageSelector className="hidden sm:block" />
+          <a
+            href="/settings"
+            aria-label="Settings"
+            className="rounded-full border border-white/10 bg-white/5 p-2.5 text-muted transition-colors hover:text-soft"
+          >
+            <Settings className="size-4" />
+          </a>
           {authChecked && (
             <>
               {firebaseUser ? (
@@ -171,7 +183,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
                   href="/login"
                   className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
                 >
-                  Sign in
+                  {t.app.signIn}
                 </a>
               )}
             </>
@@ -181,14 +193,14 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
               href="/api/auth/spotify/logout"
               className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
             >
-              Spotify connected
+              {t.app.spotifyConnected}
             </a>
           ) : (
             <button
               onClick={goToSpotifyLogin}
               className="rounded-full border border-spotify/30 bg-spotify/10 px-4 py-2 text-xs font-medium text-spotify-bright transition-colors hover:bg-spotify/20"
             >
-              Connect Spotify
+              {t.app.connectSpotify}
             </button>
           )}
         </div>

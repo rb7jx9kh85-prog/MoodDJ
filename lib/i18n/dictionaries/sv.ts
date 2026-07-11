@@ -1,0 +1,197 @@
+import type { Dictionary } from "@/lib/i18n/types";
+
+const sv: Dictionary = {
+  nav: {
+    features: "Funktioner",
+    preview: "Förhandsvisning",
+    pricing: "Priser",
+    reviews: "Recensioner",
+    signIn: "Logga in",
+    tryFree: "Prova gratis",
+  },
+  hero: {
+    badge: "Drivs av AI + ditt Spotify-konto",
+    titleLine1: "Beskriv ditt",
+    titleHighlight: "mood",
+    titleLine2: "Gå därifrån med spellistan.",
+    subtitle:
+      "Mood DJ förvandlar en mening — en stämning, en scen, en känsla — till en riktig Spotify-spellista, skapad direkt på ditt konto på några sekunder.",
+    placeholder: "T.ex. sommarkväll på en takterrass, solnedgång…",
+    generate: "Generera",
+    freeNote: "Gratis att komma igång · Inget kreditkort krävs",
+  },
+  benefits: {
+    title: "Byggt för",
+    titleHighlight: "ögonblicket",
+    titleSuffix: ", inte för den perfekta spellistan",
+    subtitle: "Mood DJ försöker inte gissa din smak för alltid — den fångar hur du känner dig just nu.",
+    items: [
+      {
+        title: "Förstår verkligen känslan",
+        description:
+          "Beskriv en scen, en känsla eller en stämning med vanliga ord — AI:n gör en riktig musikplan, inte bara nyckelord.",
+      },
+      {
+        title: "Spellista klar på sekunder",
+        description: "Sökning, urval och skapande sker i ett svep. Ingen manuell sortering, inget fram och tillbaka.",
+      },
+      {
+        title: "Direkt till din Spotify",
+        description:
+          "Inga kopior, inga externa länkar: spellistan skapas på ditt eget konto, redo att lyssna på i appen.",
+      },
+      {
+        title: "Generera om hur många gånger du vill",
+        description: "Inte nöjd med första försöket? Generera om och finjustera känslan tills tempot stämmer.",
+      },
+    ],
+  },
+  preview: {
+    eyebrow: "Förhandsvisning",
+    title: "Från mening till",
+    titleHighlight: "riktig spellista",
+    description:
+      "Varje låt väljs utifrån energin, genren och scenen du beskriver — och läggs sedan direkt till ditt Spotify-konto, med omslag och beskrivning skapade för tillfället.",
+    bullets: [
+      "Analyserar önskad stämning, energi och tempo",
+      "Väljer riktiga låtar från Spotifys katalog",
+      "Spellista med namn, beskrivning och redo att delas",
+    ],
+    playlistTitle: "Takterrass, solnedgång",
+    playlistMeta: "Mood DJ-spellista · 18 låtar",
+    ctaListen: "Lyssna på Spotify",
+  },
+  testimonials: {
+    title: "De lät",
+    titleHighlight: "AI:n välja",
+    items: [
+      {
+        name: "Léa Fontaine",
+        role: "Anordnar umgänge med vänner",
+        content:
+          "Jag skrev \"sommardrinkar, terrass, stämning som stiger sakta\" och spellistan var helt enkelt perfekt. Slipper lägga 40 minuter på att leta låtar innan folk kommer.",
+      },
+      {
+        name: "Malik Benali",
+        role: "Fristående personlig tränare",
+        content: "Jag skapar en ny spellista för varje pass beroende på intensiteten. Mina kunder frågar ofta vad appen heter.",
+      },
+      {
+        name: "Chloé Rey",
+        role: "Arkitekturstudent",
+        content:
+          "För djup fokusering fungerar det mycket bättre att beskriva känslan jag vill ha än att leta efter en färdig spellista på Spotify. Enda nackdelen: ibland för många redan kända låtar, jag skulle vilja ha fler upptäckter.",
+      },
+    ],
+  },
+  cta: {
+    title: "Din nästa spellista är",
+    titleHighlight: "en mening bort",
+    subtitle: "Anslut ditt konto, beskriv ditt mood, och låt Mood DJ sköta resten.",
+    button: "Kom igång gratis",
+  },
+  footer: {
+    pricing: "Priser",
+    signIn: "Logga in",
+    copyright: "Mood DJ. Inte anslutet till Spotify.",
+  },
+  pricing: {
+    badge: "Ingen bindningstid, avsluta när som helst",
+    title: "Generera, eller generera",
+    titleHighlight: "och publicera",
+    subtitle: "Mood DJ genererar alltid din spellista. Att publicera på Spotify är upp till dig.",
+    plans: [
+      {
+        name: "Free",
+        tagline: "Upptäck Mood DJ",
+        period: "för alltid",
+        cta: "Kom igång gratis",
+        features: [
+          { text: "1 gratis genererad spellista", included: true },
+          { text: "AI-generering med riktiga Spotify-sökningar", included: true },
+          { text: "Inget kreditkort krävs", included: true },
+          { text: "Publicering på Spotify", included: false },
+        ],
+      },
+      {
+        name: "Flow",
+        tagline: "Allt du behöver för att skapa den perfekta spellistan.",
+        period: "/ månad",
+        cta: "Välj Flow",
+        features: [
+          { text: "Obegränsad AI-spellistegenerering", included: true },
+          { text: "Skapa en spellista från vilket mood eller prompt som helst", included: true },
+          { text: "Smarta låtrekommendationer", included: true },
+          { text: "Snabb generering", included: true },
+          { text: "Din spellistehistorik sparas", included: true },
+          { text: "Tillgång till alla språk som stöds", included: true },
+          { text: "Spotify-synk med ett klick", included: false },
+        ],
+      },
+      {
+        name: "Flow Sync",
+        tagline: "Allt i Flow, plus omedelbar Spotify-integration.",
+        period: "/ månad",
+        cta: "Välj Flow Sync",
+        features: [
+          { text: "Allt som ingår i Flow", included: true },
+          { text: "Spotify-synk med ett klick", included: true },
+          { text: "Automatiskt skapande av spellista på ditt Spotify-konto", included: true },
+          { text: "Uppdatera befintliga spellistor", included: true },
+          { text: "Obegränsade Spotify-exporter", included: true },
+          { text: "Prioriterad genereringshastighet", included: true },
+          { text: "Tidig tillgång till nya funktioner", included: true },
+        ],
+      },
+      {
+        name: "Lifetime",
+        tagline: "Betala en gång, behåll Flow Sync för alltid.",
+        period: "engångsbelopp",
+        cta: "Lås upp för livet",
+        features: [
+          { text: "Allt som ingår i Flow Sync", included: true },
+          { text: "Engångsbetalning, ingen prenumeration", included: true },
+          { text: "Obegränsad generering, för alltid", included: true },
+          { text: "Obegränsad Spotify-synk, för alltid", included: true },
+          { text: "Tidig tillgång till nya funktioner", included: true },
+        ],
+      },
+    ],
+  },
+  login: {
+    signIn: "Logga in",
+    signUp: "Skapa ett konto",
+    namePlaceholder: "Ditt namn",
+    emailPlaceholder: "E-postadress",
+    passwordPlaceholder: "Lösenord",
+    submitSignIn: "Logga in",
+    submitSignUp: "Skapa mitt konto",
+    or: "eller",
+    google: "Fortsätt med Google",
+    apple: "Fortsätt med Apple",
+    consent: "Genom att fortsätta godkänner du att Mood DJ skapar en profil för ditt konto.",
+  },
+  app: {
+    spotifyConnected: "Spotify anslutet",
+    connectSpotify: "Anslut Spotify",
+    signIn: "Logga in",
+    generatePlaceholder: "Beskriv ett mood… t.ex. köra ensam på natten i regnet, melankolisk men snygg",
+    generateBtn: "Generera spellista",
+    generatePushBtn: "Generera och publicera på Spotify",
+    connectToPush: "Anslut för att publicera på Spotify",
+    hintConnected: "Generera en förhandsvisning, eller publicera den direkt till ditt Spotify-konto.",
+    hintNotConnected: "Du kan generera en förhandsvisning utan att ansluta — Spotify behövs bara för att publicera spellistan.",
+    charsLeft: "tecken kvar",
+  },
+  settings: {
+    title: "Inställningar",
+    back: "Tillbaka",
+    language: "Språk",
+    languageDescription: "Ändra gränssnittsspråket när som helst.",
+    account: "Konto",
+    notSignedIn: "Inte inloggad",
+    plan: "Nuvarande plan",
+  },
+};
+
+export default sv;

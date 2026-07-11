@@ -1,0 +1,198 @@
+import type { Dictionary } from "@/lib/i18n/types";
+
+const de: Dictionary = {
+  nav: {
+    features: "Funktionen",
+    preview: "Vorschau",
+    pricing: "Preise",
+    reviews: "Bewertungen",
+    signIn: "Anmelden",
+    tryFree: "Kostenlos testen",
+  },
+  hero: {
+    badge: "Angetrieben von KI + deinem Spotify-Konto",
+    titleLine1: "Beschreibe deine",
+    titleHighlight: "Stimmung",
+    titleLine2: "Nimm die Playlist mit.",
+    subtitle:
+      "Mood DJ verwandelt einen Satz — eine Stimmung, eine Szene, ein Gefühl — in eine echte Spotify-Playlist, direkt in deinem Konto erstellt, in Sekunden.",
+    placeholder: "Z. B. Sommerabend auf einer Dachterrasse, Sonnenuntergang…",
+    generate: "Generieren",
+    freeNote: "Kostenloser Start · Keine Kreditkarte nötig",
+  },
+  benefits: {
+    title: "Gemacht für",
+    titleHighlight: "den Moment",
+    titleSuffix: ", nicht für die perfekte Playlist",
+    subtitle: "Mood DJ versucht nicht, deinen Geschmack für immer zu erraten — es erfasst, wie du dich gerade fühlst.",
+    items: [
+      {
+        title: "Versteht die Stimmung wirklich",
+        description:
+          "Beschreibe eine Szene, ein Gefühl oder eine Stimmung in normaler Sprache — die KI macht daraus einen echten Musikplan, nicht nur Schlagwörter.",
+      },
+      {
+        title: "Playlist in Sekunden fertig",
+        description: "Suche, Auswahl und Erstellung passieren in einem Durchgang. Kein manuelles Sortieren, kein Hin und Her.",
+      },
+      {
+        title: "Direkt in dein Spotify",
+        description:
+          "Keine Kopien, keine externen Links: Die Playlist wird direkt in deinem eigenen Konto erstellt, bereit zum Anhören in der App.",
+      },
+      {
+        title: "Beliebig oft neu generieren",
+        description: "Nicht überzeugt vom ersten Versuch? Generiere neu und verfeinere die Stimmung, bis das Tempo passt.",
+      },
+    ],
+  },
+  preview: {
+    eyebrow: "Vorschau",
+    title: "Vom Satz zur",
+    titleHighlight: "echten Playlist",
+    description:
+      "Jeder Titel wird anhand der Energie, des Genres und der Szene ausgewählt, die du beschreibst — und dann direkt zu deinem Spotify-Konto hinzugefügt, mit eigens dafür erstelltem Cover und Beschreibung.",
+    bullets: [
+      "Analysiert die gesuchte Stimmung, Energie und das Tempo",
+      "Wählt echte Titel aus dem Spotify-Katalog aus",
+      "Playlist benannt, beschrieben und teilbereit",
+    ],
+    playlistTitle: "Dachterrasse, Sonnenuntergang",
+    playlistMeta: "Mood DJ Playlist · 18 Titel",
+    ctaListen: "Auf Spotify anhören",
+  },
+  testimonials: {
+    title: "Sie ließen",
+    titleHighlight: "die KI wählen",
+    items: [
+      {
+        name: "Léa Fontaine",
+        role: "Organisiert Treffen mit Freunden",
+        content:
+          "Ich habe „Sommer-Aperitif, Terrasse, langsam steigende Stimmung“ eingegeben, und die Playlist war einfach perfekt. Keine 40 Minuten mehr Musiksuche, bevor die Gäste kommen.",
+      },
+      {
+        name: "Malik Benali",
+        role: "Selbstständiger Fitnesstrainer",
+        content:
+          "Ich generiere für jede Einheit je nach Intensität eine andere Playlist. Meine Kunden fragen mich regelmäßig nach dem Namen der App.",
+      },
+      {
+        name: "Chloé Rey",
+        role: "Architekturstudentin",
+        content:
+          "Für konzentriertes Arbeiten funktioniert es viel besser, die gewünschte Stimmung zu beschreiben, als eine fertige Playlist auf Spotify zu suchen. Einziger Nachteil: manchmal zu viele bekannte Titel, ich hätte gerne mehr Entdeckungen.",
+      },
+    ],
+  },
+  cta: {
+    title: "Deine nächste Playlist ist nur",
+    titleHighlight: "einen Satz entfernt",
+    subtitle: "Verbinde dein Konto, beschreibe deine Stimmung, und lass Mood DJ den Rest erledigen.",
+    button: "Kostenlos starten",
+  },
+  footer: {
+    pricing: "Preise",
+    signIn: "Anmelden",
+    copyright: "Mood DJ. Nicht mit Spotify verbunden.",
+  },
+  pricing: {
+    badge: "Keine Verpflichtung, jederzeit kündbar",
+    title: "Generiere, oder generiere",
+    titleHighlight: "und veröffentliche",
+    subtitle: "Mood DJ generiert deine Playlist immer. Die Veröffentlichung auf Spotify entscheidest du.",
+    plans: [
+      {
+        name: "Free",
+        tagline: "Mood DJ entdecken",
+        period: "für immer",
+        cta: "Kostenlos starten",
+        features: [
+          { text: "1 kostenlos generierte Playlist", included: true },
+          { text: "KI-Generierung mit echten Spotify-Suchen", included: true },
+          { text: "Keine Kreditkarte nötig", included: true },
+          { text: "Veröffentlichung auf Spotify", included: false },
+        ],
+      },
+      {
+        name: "Flow",
+        tagline: "Alles, was du für die perfekte Playlist brauchst.",
+        period: "/ Monat",
+        cta: "Flow wählen",
+        features: [
+          { text: "Unbegrenzte KI-Playlist-Generierung", included: true },
+          { text: "Playlist aus jeder Stimmung oder jedem Prompt", included: true },
+          { text: "Intelligente Titelempfehlungen", included: true },
+          { text: "Schnelle Generierung", included: true },
+          { text: "Playlist-Verlauf gespeichert", included: true },
+          { text: "Zugriff auf alle unterstützten Sprachen", included: true },
+          { text: "Spotify-Sync mit einem Klick", included: false },
+        ],
+      },
+      {
+        name: "Flow Sync",
+        tagline: "Alles in Flow, plus sofortige Spotify-Integration.",
+        period: "/ Monat",
+        cta: "Flow Sync wählen",
+        features: [
+          { text: "Alles aus Flow enthalten", included: true },
+          { text: "Spotify-Sync mit einem Klick", included: true },
+          { text: "Automatische Playlist-Erstellung in deinem Spotify-Konto", included: true },
+          { text: "Bestehende Playlists aktualisieren", included: true },
+          { text: "Unbegrenzte Spotify-Exporte", included: true },
+          { text: "Bevorzugte Generierungsgeschwindigkeit", included: true },
+          { text: "Früher Zugang zu neuen Funktionen", included: true },
+        ],
+      },
+      {
+        name: "Lifetime",
+        tagline: "Einmal zahlen, Flow Sync für immer behalten.",
+        period: "einmalig",
+        cta: "Lebenslang freischalten",
+        features: [
+          { text: "Alles aus Flow Sync enthalten", included: true },
+          { text: "Einmalzahlung, kein Abo", included: true },
+          { text: "Unbegrenzte Generierung, für immer", included: true },
+          { text: "Unbegrenzte Spotify-Synchronisierung, für immer", included: true },
+          { text: "Früher Zugang zu neuen Funktionen", included: true },
+        ],
+      },
+    ],
+  },
+  login: {
+    signIn: "Anmelden",
+    signUp: "Konto erstellen",
+    namePlaceholder: "Dein Name",
+    emailPlaceholder: "E-Mail-Adresse",
+    passwordPlaceholder: "Passwort",
+    submitSignIn: "Anmelden",
+    submitSignUp: "Konto erstellen",
+    or: "oder",
+    google: "Mit Google fortfahren",
+    apple: "Mit Apple fortfahren",
+    consent: "Wenn du fortfährst, akzeptierst du, dass Mood DJ ein Profil für dein Konto erstellt.",
+  },
+  app: {
+    spotifyConnected: "Spotify verbunden",
+    connectSpotify: "Spotify verbinden",
+    signIn: "Anmelden",
+    generatePlaceholder: "Beschreibe eine Stimmung… z. B. allein nachts im Regen fahren, melancholisch aber stilvoll",
+    generateBtn: "Playlist generieren",
+    generatePushBtn: "Generieren & auf Spotify veröffentlichen",
+    connectToPush: "Verbinden, um auf Spotify zu veröffentlichen",
+    hintConnected: "Erstelle eine Vorschau oder veröffentliche sie direkt in deinem Spotify-Konto.",
+    hintNotConnected: "Du kannst eine Vorschau ohne Verbindung erstellen — Spotify wird nur zum Veröffentlichen benötigt.",
+    charsLeft: "Zeichen übrig",
+  },
+  settings: {
+    title: "Einstellungen",
+    back: "Zurück",
+    language: "Sprache",
+    languageDescription: "Ändere die Sprache der Oberfläche jederzeit.",
+    account: "Konto",
+    notSignedIn: "Nicht angemeldet",
+    plan: "Aktueller Plan",
+  },
+};
+
+export default de;

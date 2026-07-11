@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Play, Music2 } from "lucide-react";
 import { fadeUp, staggerContainer } from "@/lib/animations";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 const mockTracks = [
   { title: "Golden Hour", artist: "Kacey Musgraves", duration: "3:28" },
@@ -12,8 +13,10 @@ const mockTracks = [
 ];
 
 export default function PreviewShowcase() {
+  const { t } = useLanguage();
+
   return (
-    <section className="relative px-6 py-24">
+    <section id="preview" className="relative px-6 py-24">
       <motion.div
         initial="hidden"
         whileInView="visible"
@@ -23,29 +26,19 @@ export default function PreviewShowcase() {
       >
         <motion.div variants={fadeUp}>
           <span className="text-xs font-semibold uppercase tracking-widest text-spotify-bright">
-            Aperçu
+            {t.preview.eyebrow}
           </span>
           <h2 className="mt-3 text-3xl font-semibold sm:text-4xl">
-            De la phrase à la <span className="text-gradient">playlist réelle</span>
+            {t.preview.title} <span className="text-gradient">{t.preview.titleHighlight}</span>
           </h2>
-          <p className="mt-4 text-muted">
-            Chaque titre est choisi en fonction de l&apos;énergie, du genre et de la scène que tu
-            décris — puis ajouté directement sur ton compte Spotify, avec une pochette et une
-            description générées pour l&apos;occasion.
-          </p>
+          <p className="mt-4 text-muted">{t.preview.description}</p>
           <ul className="mt-6 space-y-3 text-sm text-muted">
-            <li className="flex items-start gap-2">
-              <span className="mt-1 size-1.5 shrink-0 rounded-full bg-spotify-bright" />
-              Analyse du mood, de l&apos;énergie et du tempo recherché
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 size-1.5 shrink-0 rounded-full bg-spotify-bright" />
-              Sélection de titres réels via le catalogue Spotify
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 size-1.5 shrink-0 rounded-full bg-spotify-bright" />
-              Playlist nommée, décrite et prête à partager
-            </li>
+            {t.preview.bullets.map((b) => (
+              <li key={b} className="flex items-start gap-2">
+                <span className="mt-1 size-1.5 shrink-0 rounded-full bg-spotify-bright" />
+                {b}
+              </li>
+            ))}
           </ul>
         </motion.div>
 
@@ -55,32 +48,32 @@ export default function PreviewShowcase() {
               <Music2 className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-soft">Rooftop, coucher de soleil</p>
-              <p className="text-xs text-muted">Playlist Mood DJ · 18 titres</p>
+              <p className="text-sm font-semibold text-soft">{t.preview.playlistTitle}</p>
+              <p className="text-xs text-muted">{t.preview.playlistMeta}</p>
             </div>
           </div>
 
           <div className="mt-4 space-y-1">
-            {mockTracks.map((t, i) => (
+            {mockTracks.map((track, i) => (
               <div
-                key={t.title}
+                key={track.title}
                 className="flex items-center justify-between rounded-xl px-2 py-2.5 text-sm transition-colors hover:bg-white/5"
               >
                 <div className="flex items-center gap-3">
                   <span className="w-4 text-xs text-muted">{i + 1}</span>
                   <div>
-                    <p className="font-medium text-soft">{t.title}</p>
-                    <p className="text-xs text-muted">{t.artist}</p>
+                    <p className="font-medium text-soft">{track.title}</p>
+                    <p className="text-xs text-muted">{track.artist}</p>
                   </div>
                 </div>
-                <span className="text-xs text-muted">{t.duration}</span>
+                <span className="text-xs text-muted">{track.duration}</span>
               </div>
             ))}
           </div>
 
           <button className="spotify-glow mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-spotify py-3 text-sm font-semibold text-black">
             <Play className="size-4 fill-black" />
-            Écouter sur Spotify
+            {t.preview.ctaListen}
           </button>
         </motion.div>
       </motion.div>

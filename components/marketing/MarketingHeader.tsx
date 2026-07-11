@@ -5,16 +5,19 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import LogoMark from "@/components/LogoMark";
 import Magnetic from "@/components/marketing/Magnetic";
-
-const links = [
-  { name: "Fonctionnalités", href: "#benefits" },
-  { name: "Aperçu", href: "#preview" },
-  { name: "Tarifs", href: "/pricing" },
-  { name: "Avis", href: "#testimonials" },
-];
+import LanguageSelector from "@/components/LanguageSelector";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function MarketingHeader() {
+  const { t } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
+
+  const links = [
+    { name: t.nav.features, href: "#benefits" },
+    { name: t.nav.preview, href: "#preview" },
+    { name: t.nav.pricing, href: "/pricing" },
+    { name: t.nav.reviews, href: "#testimonials" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -44,18 +47,19 @@ export default function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageSelector className="hidden sm:block" />
           <Link
             href="/login"
             className="hidden rounded-full px-4 py-2 text-sm font-medium text-soft transition-colors hover:text-spotify-bright sm:block"
           >
-            Se connecter
+            {t.nav.signIn}
           </Link>
           <Magnetic strength={10}>
             <Link
               href="/login"
               className="spotify-glow block rounded-full bg-spotify px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
             >
-              Essayer gratuitement
+              {t.nav.tryFree}
             </Link>
           </Magnetic>
         </div>

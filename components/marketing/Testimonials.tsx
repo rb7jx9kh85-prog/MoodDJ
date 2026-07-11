@@ -3,32 +3,13 @@
 import { motion } from "framer-motion";
 import { Star, Quote } from "lucide-react";
 import { fadeUp, staggerContainer } from "@/lib/animations";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-const testimonials = [
-  {
-    name: "Léa Fontaine",
-    role: "Organise des soirées entre amis",
-    content:
-      "J'ai tapé « apéro d'été, terrasse, ambiance qui monte doucement » et la playlist était littéralement parfaite. Plus besoin de passer 40 minutes à chercher des morceaux avant que les gens arrivent.",
-    rating: 5,
-  },
-  {
-    name: "Malik Benali",
-    role: "Coach sportif indépendant",
-    content:
-      "Je génère une playlist différente à chaque séance selon l'intensité du cours. Mes clients me demandent régulièrement le nom de l'app.",
-    rating: 5,
-  },
-  {
-    name: "Chloé Rey",
-    role: "Étudiante en architecture",
-    content:
-      "Pour bosser en focus profond, décrire l'ambiance que je veux marche bien mieux que chercher une playlist toute faite sur Spotify. Le seul bémol : parfois trop de titres déjà connus, j'aimerais plus de découvertes.",
-    rating: 4,
-  },
-];
+const ratings = [5, 5, 4];
 
 export default function Testimonials() {
+  const { t } = useLanguage();
+
   return (
     <section id="testimonials" className="relative px-6 py-24">
       <motion.div
@@ -40,14 +21,14 @@ export default function Testimonials() {
       >
         <motion.div variants={fadeUp} className="mx-auto max-w-xl text-center">
           <h2 className="text-3xl font-semibold sm:text-4xl">
-            Ils ont laissé <span className="text-gradient">l&apos;IA choisir</span>
+            {t.testimonials.title} <span className="text-gradient">{t.testimonials.titleHighlight}</span>
           </h2>
         </motion.div>
 
         <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {testimonials.map((t) => (
+          {t.testimonials.items.map((item, idx) => (
             <motion.div
-              key={t.name}
+              key={item.name}
               variants={fadeUp}
               className="glass-card hover-lift flex flex-col rounded-3xl p-7"
             >
@@ -56,16 +37,16 @@ export default function Testimonials() {
                   <Star
                     key={i}
                     className={`size-4 ${
-                      i < t.rating ? "fill-spotify-bright text-spotify-bright" : "text-white/15"
+                      i < ratings[idx] ? "fill-spotify-bright text-spotify-bright" : "text-white/15"
                     }`}
                   />
                 ))}
               </div>
               <Quote className="mb-2 size-6 text-spotify/30" />
-              <p className="flex-1 text-sm leading-relaxed text-soft/90">&ldquo;{t.content}&rdquo;</p>
+              <p className="flex-1 text-sm leading-relaxed text-soft/90">&ldquo;{item.content}&rdquo;</p>
               <div className="mt-6 border-t border-white/10 pt-4">
-                <p className="text-sm font-semibold text-soft">{t.name}</p>
-                <p className="text-xs text-muted">{t.role}</p>
+                <p className="text-sm font-semibold text-soft">{item.name}</p>
+                <p className="text-xs text-muted">{item.role}</p>
               </div>
             </motion.div>
           ))}

@@ -5,8 +5,10 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { fadeUp } from "@/lib/animations";
 import Magnetic from "@/components/marketing/Magnetic";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export default function FinalCta() {
+  const { t } = useLanguage();
   return (
     <section className="relative px-6 pb-28 pt-4">
       <motion.div
@@ -26,17 +28,15 @@ export default function FinalCta() {
         />
         <div className="relative z-10">
           <h2 className="text-3xl font-semibold sm:text-4xl">
-            Ta prochaine playlist est à <span className="text-gradient">une phrase</span>
+            {t.cta.title} <span className="text-gradient">{t.cta.titleHighlight}</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-md text-muted">
-            Connecte ton compte, décris ton mood, et laisse Mood DJ s&apos;occuper du reste.
-          </p>
+          <p className="mx-auto mt-4 max-w-md text-muted">{t.cta.subtitle}</p>
           <Magnetic strength={14} className="mt-8">
             <Link
               href="/login"
               className="inline-flex items-center gap-2 rounded-full bg-spotify px-7 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
             >
-              Commencer gratuitement
+              {t.cta.button}
               <ArrowRight className="size-4" />
             </Link>
           </Magnetic>

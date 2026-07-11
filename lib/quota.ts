@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
-export type Plan = "free" | "flow" | "flow_sync";
+export type Plan = "free" | "flow" | "flow_sync" | "lifetime";
 
 export type UserQuota = {
   uid: string;
@@ -25,7 +25,7 @@ export async function getUidFromRequest(req: NextRequest): Promise<string | null
 }
 
 function normalizePlan(raw: unknown): Plan {
-  return raw === "flow" || raw === "flow_sync" ? raw : "free";
+  return raw === "flow" || raw === "flow_sync" || raw === "lifetime" ? raw : "free";
 }
 
 /** Reads the caller's plan + usage. Missing doc (shouldn't happen post sign-up) defaults to free/0. */
@@ -44,9 +44,9 @@ export function canGenerate(quota: UserQuota): boolean {
   return quota.plan !== "free" || quota.generationsUsed < 1;
 }
 
-/** Only Flow Sync can push to Spotify (create or update a playlist there). */
+/** Flow Sync and Lifetime can push to Spotify (create or update a playlist there). */
 export function canPushToSpotify(quota: UserQuota): boolean {
-  return quota.plan === "flow_sync";
+  return quota.plan === "flow_sync" || quota.plan === "lifetime";
 }
 
 export async function recordGeneration(uid: string): Promise<void> {
