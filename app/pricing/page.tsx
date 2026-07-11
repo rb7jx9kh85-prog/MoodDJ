@@ -2,57 +2,72 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, Sparkles } from "lucide-react";
+import { Check, X, Sparkles } from "lucide-react";
 import Background from "@/components/Background";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 
-const plans = [
+type Feature = { text: string; included: boolean };
+
+const plans: {
+  name: string;
+  tagline: string;
+  price: string;
+  period: string;
+  highlighted: boolean;
+  badge?: string;
+  cta: string;
+  features: Feature[];
+}[] = [
   {
-    name: "Warm-Up",
+    name: "Free",
     tagline: "Pour découvrir Mood DJ",
-    price: "0€",
+    price: "0 CHF",
     period: "toujours",
     highlighted: false,
     cta: "Commencer gratuitement",
     features: [
-      "5 playlists générées / mois",
-      "Jusqu'à 15 titres par playlist",
-      "Connexion Spotify illimitée",
-      "Historique sur 7 jours",
+      { text: "1 playlist générée gratuitement", included: true },
+      { text: "Génération par IA avec vraies recherches Spotify", included: true },
+      { text: "Aucune carte bancaire requise", included: true },
+      { text: "Publication sur Spotify", included: false },
     ],
   },
   {
-    name: "Headliner",
-    tagline: "Pour ceux qui écoutent tous les jours",
-    price: "4,99€",
-    period: "/ mois",
-    highlighted: true,
-    cta: "Passer Headliner",
-    features: [
-      "Playlists illimitées",
-      "Jusqu'à 30 titres par playlist",
-      "Génération prioritaire",
-      "Pochettes personnalisées par IA",
-      "Historique illimité",
-      "Support par email prioritaire",
-    ],
-  },
-  {
-    name: "Backstage Pass",
-    tagline: "Pour les power users et les créateurs",
-    price: "12,99€",
+    name: "Flow",
+    tagline: "Tout ce qu'il faut pour générer la playlist parfaite.",
+    price: "4,90 CHF",
     period: "/ mois",
     highlighted: false,
-    cta: "Passer Backstage",
+    cta: "Choisir Flow",
     features: [
-      "Tout Headliner, sans limites",
-      "Playlists collaboratives",
-      "Statistiques d'écoute avancées",
-      "Accès anticipé aux nouvelles fonctionnalités",
-      "Support prioritaire 24/7",
+      { text: "Génération de playlists IA illimitée", included: true },
+      { text: "Crée une playlist à partir de n'importe quel mood ou prompt", included: true },
+      { text: "Recommandations de titres intelligentes", included: true },
+      { text: "Génération rapide", included: true },
+      { text: "Historique de tes playlists sauvegardé", included: true },
+      { text: "Accès à toutes les langues supportées", included: true },
+      { text: "Synchronisation Spotify en un clic", included: false },
+    ],
+  },
+  {
+    name: "Flow Sync",
+    tagline: "Tout Flow, plus l'intégration Spotify instantanée.",
+    price: "7,90 CHF",
+    period: "/ mois",
+    highlighted: true,
+    badge: "⭐ Le plus populaire",
+    cta: "Choisir Flow Sync",
+    features: [
+      { text: "Tout ce qui est inclus dans Flow", included: true },
+      { text: "Synchronisation Spotify en un clic", included: true },
+      { text: "Création automatique de la playlist sur ton compte Spotify", included: true },
+      { text: "Mise à jour des playlists existantes", included: true },
+      { text: "Exports Spotify illimités", included: true },
+      { text: "Génération prioritaire", included: true },
+      { text: "Accès anticipé aux nouvelles fonctionnalités", included: true },
     ],
   },
 ];
@@ -78,11 +93,10 @@ export default function PricingPage() {
             Sans engagement, résiliable à tout moment
           </motion.div>
           <motion.h1 variants={fadeUp} className="text-4xl font-semibold sm:text-5xl">
-            Un tarif pour chaque <span className="text-gradient">rythme d&apos;écoute</span>
+            Génère, ou génère <span className="text-gradient">et publie</span>
           </motion.h1>
           <motion.p variants={fadeUp} className="mt-4 text-muted">
-            Commence gratuitement. Passe à la vitesse supérieure quand Mood DJ devient ton
-            réflexe.
+            Mood DJ génère toujours ta playlist. Passer sur Spotify, c&apos;est à toi de choisir.
           </motion.p>
         </motion.div>
 
@@ -103,9 +117,9 @@ export default function PricingPage() {
                   : "glass-card hover-lift"
               )}
             >
-              {plan.highlighted && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-spotify px-3 py-1 text-xs font-semibold text-black">
-                  Le plus populaire
+              {plan.badge && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-spotify px-3 py-1 text-xs font-semibold text-black">
+                  {plan.badge}
                 </span>
               )}
 
@@ -119,9 +133,19 @@ export default function PricingPage() {
 
               <ul className="mt-8 flex-1 space-y-3 text-sm">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-soft/90">
-                    <Check className="mt-0.5 size-4 shrink-0 text-spotify-bright" />
-                    {f}
+                  <li
+                    key={f.text}
+                    className={cn(
+                      "flex items-start gap-2.5",
+                      f.included ? "text-soft/90" : "text-muted/60 line-through decoration-muted/40"
+                    )}
+                  >
+                    {f.included ? (
+                      <Check className="mt-0.5 size-4 shrink-0 text-spotify-bright" />
+                    ) : (
+                      <X className="mt-0.5 size-4 shrink-0 text-muted/50" />
+                    )}
+                    {f.text}
                   </li>
                 ))}
               </ul>

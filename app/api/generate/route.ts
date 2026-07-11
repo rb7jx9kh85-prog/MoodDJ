@@ -13,6 +13,7 @@ import {
   createPlaylist,
   addTracksToPlaylist,
   refreshSpotifyToken,
+  getAppAccessToken,
   SpotifyAuthError,
   SpotifyApiError,
 } from "@/lib/spotify";
@@ -27,8 +28,10 @@ function errorResponse(message: string, code: ApiErrorCode, status: number) {
 }
 
 /**
- * Run a Spotify operation with an access token, transparently refreshing once
- * if Spotify rejects the token mid-request.
+ * Run a Spotify operation with a *user* access token, transparently
+ * refreshing once if Spotify rejects the token mid-request. Only relevant
+ * when we're actually acting on the user's account (pushToSpotify=true) —
+ * the app-only token used for search-only requests never needs this.
  */
 async function withFreshToken<T>(
   token: string,
@@ -51,17 +54,7 @@ async function withFreshToken<T>(
 }
 
 export async function POST(req: NextRequest) {
-  // 1. Auth check.
-  const accessToken = await getValidAccessToken();
-  if (!accessToken) {
-    return errorResponse(
-      "Connect your Spotify account first to create a real playlist.",
-      "not_connected",
-      401
-    );
-  }
-
-  // 2. Validate prompt.
+  // 1. Parse & validate the request.
   let body: unknown;
   try {
     body = await req.json();
@@ -69,6 +62,8 @@ export async function POST(req: NextRequest) {
     return errorResponse("Invalid request.", "empty_prompt", 400);
   }
   const rawPrompt = (body as { prompt?: unknown })?.prompt;
+  const pushToSpotify = (body as { pushToSpotify?: unknown })?.pushToSpotify === true;
+
   if (typeof rawPrompt !== "string" || rawPrompt.trim().length === 0) {
     return errorResponse("Describe a vibe before generating your playlist.", "empty_prompt", 400);
   }
@@ -82,6 +77,20 @@ export async function POST(req: NextRequest) {
   const prompt = sanitizePrompt(rawPrompt);
   if (!prompt) {
     return errorResponse("Describe a vibe before generating your playlist.", "empty_prompt", 400);
+  }
+
+  // 2. Only require a connected Spotify account when we're actually going to
+  // write to it — generating a preview only needs an app-level token.
+  let userAccessToken: string | null = null;
+  if (pushToSpotify) {
+    userAccessToken = await getValidAccessToken();
+    if (!userAccessToken) {
+      return errorResponse(
+        "Connect your Spotify account first to push a playlist.",
+        "not_connected",
+        401
+      );
+    }
   }
 
   // 3. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
@@ -106,16 +115,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 4. Identify the user.
-    const me = await withFreshToken(accessToken, (t) => getSpotifyMe(t));
+    // 4. Search tracks across all queries and merge. A search-only request
+    // uses the app's own Client Credentials token (no user involved at
+    // all); a push request reuses the user's token since we'll need it
+    // right after anyway.
+    const searchWith = async (query: string, limit: number): Promise<Track[]> => {
+      if (pushToSpotify && userAccessToken) {
+        return withFreshToken(userAccessToken, (t) => searchTracks(t, query, limit));
+      }
+      return searchTracks(await getAppAccessToken(), query, limit);
+    };
 
-    // 5. Search tracks across all queries and merge.
     const perQuery = 8;
     const collected: Track[] = [];
     const results = await Promise.all(
-      plan.searchQueries.map((q) =>
-        withFreshToken(accessToken, (t) => searchTracks(t, q, perQuery)).catch(() => [] as Track[])
-      )
+      plan.searchQueries.map((q) => searchWith(q, perQuery).catch(() => [] as Track[]))
     );
     for (const list of results) collected.push(...list);
 
@@ -124,18 +138,35 @@ export async function POST(req: NextRequest) {
       return errorResponse("No tracks found for this mood. Try a different vibe.", "no_tracks", 422);
     }
 
-    // 6. Select ~trackCount tracks (lightly shuffled for variety).
+    // 5. Select ~trackCount tracks (lightly shuffled for variety).
     const target = Math.min(plan.trackCount || 15, 20);
     const selected = shuffle(unique).slice(0, Math.max(target, Math.min(10, unique.length)));
 
-    // 7. Create the playlist.
-    const playlist = await withFreshToken(accessToken, (t) =>
+    const base = {
+      playlistName: plan.playlistName,
+      playlistDescription: plan.playlistDescription,
+      vibe: plan.vibe,
+      scene: plan.scene,
+      energy: plan.energy,
+      emotionalTone: plan.emotionalTone,
+      genres: plan.genres,
+      transitionLogic: plan.transitionLogic,
+      tracks: selected,
+    };
+
+    if (!pushToSpotify || !userAccessToken) {
+      const response: GeneratedPlaylistResponse = { ...base, pushedToSpotify: false };
+      return NextResponse.json(response);
+    }
+
+    // 6. Create the playlist on the user's account and add the tracks.
+    const me = await withFreshToken(userAccessToken, (t) => getSpotifyMe(t));
+    const playlist = await withFreshToken(userAccessToken, (t) =>
       createPlaylist(t, me.id, plan.playlistName, plan.playlistDescription)
     );
 
-    // 8. Add the tracks.
     try {
-      await withFreshToken(accessToken, (t) =>
+      await withFreshToken(userAccessToken, (t) =>
         addTracksToPlaylist(t, playlist.id, selected.map((s) => s.uri))
       );
     } catch {
@@ -146,17 +177,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 9. Respond.
     const response: GeneratedPlaylistResponse = {
-      playlistName: plan.playlistName,
-      playlistDescription: plan.playlistDescription,
-      vibe: plan.vibe,
-      scene: plan.scene,
-      energy: plan.energy,
-      emotionalTone: plan.emotionalTone,
-      genres: plan.genres,
-      transitionLogic: plan.transitionLogic,
-      tracks: selected,
+      ...base,
+      pushedToSpotify: true,
       spotifyPlaylistUrl: playlist.url,
       playlistId: playlist.id,
     };

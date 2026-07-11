@@ -36,6 +36,14 @@ export type GeneratedPlaylistResponse = {
   genres: string[];
   transitionLogic: string;
   tracks: Track[];
+  /** True once this playlist has actually been created on the user's Spotify account. */
+  pushedToSpotify: boolean;
+  spotifyPlaylistUrl?: string;
+  playlistId?: string;
+};
+
+/** Payload returned by /api/push-to-spotify on success. */
+export type PushToSpotifyResponse = {
   spotifyPlaylistUrl: string;
   playlistId: string;
 };
@@ -56,4 +64,5 @@ export type ApiErrorCode =
   | "spotify_error"
   | "no_tracks"
   | "playlist_partial"
+  | "invalid_tracks"
   | "unknown";

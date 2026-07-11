@@ -17,7 +17,7 @@ const EXAMPLES = [
 type MoodInputProps = {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onGenerate: (pushToSpotify: boolean) => void;
   onConnect: () => void;
   loading: boolean;
   connected: boolean;
@@ -26,13 +26,13 @@ type MoodInputProps = {
 export default function MoodInput({
   value,
   onChange,
-  onSubmit,
+  onGenerate,
   onConnect,
   loading,
   connected,
 }: MoodInputProps) {
   const remaining = MAX_PROMPT_LENGTH - value.length;
-  const canSubmit = connected && value.trim().length > 0 && !loading;
+  const canGenerate = value.trim().length > 0 && !loading;
 
   return (
     <motion.div variants={fadeUp} className="w-full">
@@ -41,9 +41,9 @@ export default function MoodInput({
           value={value}
           onChange={(e) => onChange(e.target.value.slice(0, MAX_PROMPT_LENGTH))}
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canSubmit) {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canGenerate) {
               e.preventDefault();
-              onSubmit();
+              onGenerate(connected);
             }
           }}
           placeholder="Describe a vibe… e.g. driving alone at night under the rain, melancholic but classy"
@@ -52,38 +52,51 @@ export default function MoodInput({
           className="w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-base text-soft placeholder:text-muted/60 focus:outline-none sm:text-lg"
         />
 
-        <div className="flex items-center justify-between gap-3 px-3 pb-1">
+        <div className="flex flex-col gap-3 px-3 pb-1 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs text-muted/70">{remaining} characters left</span>
 
-          {connected ? (
+          <div className="flex flex-col gap-2 sm:flex-row">
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={onSubmit}
-              disabled={!canSubmit}
-              className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => onGenerate(false)}
+              disabled={!canGenerate}
+              className="hover-lift inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-soft transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               {loading ? "Generating…" : "Generate playlist"}
             </motion.button>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={onConnect}
-              className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
-            >
-              <SpotifyGlyph />
-              Connect Spotify
-            </motion.button>
-          )}
+
+            {connected ? (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onGenerate(true)}
+                disabled={!canGenerate}
+                className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <SpotifyGlyph />
+                Generate &amp; push to Spotify
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={onConnect}
+                className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright"
+              >
+                <SpotifyGlyph />
+                Connect to push to Spotify
+              </motion.button>
+            )}
+          </div>
         </div>
       </div>
 
-      {!connected && (
-        <p className="mt-3 text-center text-sm text-muted">
-          Connect your Spotify account first to create a real playlist.
-        </p>
-      )}
+      <p className="mt-3 text-center text-sm text-muted">
+        {connected
+          ? "Generate a preview, or push it straight to your Spotify account."
+          : "You can generate a preview without connecting — Spotify is only needed to push the playlist."}
+      </p>
 
       {/* Example vibes */}
       <div className="mt-6 flex flex-wrap justify-center gap-2">

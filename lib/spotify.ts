@@ -145,6 +145,44 @@ export async function addTracksToPlaylist(
   }
 }
 
+let appToken: { accessToken: string; expiresAt: number } | null = null;
+
+/**
+ * App-only token via the Client Credentials flow — no user has to connect
+ * Spotify for this. Only works for public catalog reads (search), never for
+ * writes like creating a playlist. Cached in-memory per serverless instance
+ * and refreshed a minute before expiry.
+ */
+export async function getAppAccessToken(): Promise<string> {
+  if (appToken && appToken.expiresAt > Date.now()) {
+    return appToken.accessToken;
+  }
+
+  const clientId = process.env.SPOTIFY_CLIENT_ID!;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET!;
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  const res = await fetch(SPOTIFY_ACCOUNTS, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "client_credentials" }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new SpotifyAuthError("Could not get an app access token");
+  }
+  const data = (await res.json()) as { access_token: string; expires_in: number };
+  appToken = {
+    accessToken: data.access_token,
+    expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+  };
+  return appToken.accessToken;
+}
+
 export type RefreshResult = {
   accessToken: string;
   expiresIn: number;

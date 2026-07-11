@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { GeneratedPlaylistResponse, ApiError } from "@/types";
+import type { ApiError, GeneratedPlaylistResponse, PushToSpotifyResponse } from "@/types";
 import Hero from "./Hero";
 import MoodInput from "./MoodInput";
 import LoadingExperience from "./LoadingExperience";
@@ -27,12 +27,13 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<GeneratedPlaylistResponse | null>(null);
+  const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<{ message: string; showConnect: boolean }>({
     message: authError ? "Your Spotify connection failed. Please connect again." : "",
     showConnect: Boolean(authError),
   });
 
-  const generate = async () => {
+  const generate = async (pushToSpotify: boolean) => {
     if (!prompt.trim()) {
       setStatus("error");
       setError({ message: "Describe a vibe before generating your playlist.", showConnect: false });
@@ -43,7 +44,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, pushToSpotify }),
       });
 
       if (!res.ok) {
@@ -64,6 +65,42 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     } catch {
       setError({ message: "Network error. Please check your connection and try again.", showConnect: false });
       setStatus("error");
+    }
+  };
+
+  const pushCurrentPlaylist = async () => {
+    if (!result || result.pushedToSpotify) return;
+    setPushing(true);
+    try {
+      const res = await fetch("/api/push-to-spotify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playlistName: result.playlistName,
+          playlistDescription: result.playlistDescription,
+          trackUris: result.tracks.map((t) => t.uri),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as ApiError;
+        const showConnect = data.code === "not_connected" || data.code === "session_expired";
+        if (showConnect) setConnected(false);
+        setError({
+          message: data.error || "Could not push this playlist to Spotify.",
+          showConnect,
+        });
+        setStatus("error");
+        return;
+      }
+
+      const data = (await res.json()) as PushToSpotifyResponse;
+      setResult({ ...result, pushedToSpotify: true, ...data });
+    } catch {
+      setError({ message: "Network error. Please check your connection and try again.", showConnect: false });
+      setStatus("error");
+    } finally {
+      setPushing(false);
     }
   };
 
@@ -102,7 +139,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
         <MoodInput
           value={prompt}
           onChange={setPrompt}
-          onSubmit={generate}
+          onGenerate={generate}
           onConnect={goToSpotifyLogin}
           loading={status === "loading"}
           connected={connected}
@@ -118,7 +155,14 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
           )}
           {status === "result" && result && (
             <motion.div key="result">
-              <PlaylistResult data={result} onReset={reset} />
+              <PlaylistResult
+                data={result}
+                connected={connected}
+                pushing={pushing}
+                onPush={pushCurrentPlaylist}
+                onConnect={goToSpotifyLogin}
+                onReset={reset}
+              />
             </motion.div>
           )}
           {status === "error" && error.message && (
