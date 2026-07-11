@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import type { GeneratedPlaylistResponse } from "@/types";
+import { motion, AnimatePresence } from "framer-motion";
+import type { GeneratedPlaylistResponse, OwnedPlaylist } from "@/types";
 import { blurReveal, staggerContainer } from "@/lib/animations";
 import TrackCard from "./TrackCard";
 import PlaylistCover from "./PlaylistCover";
@@ -11,7 +11,7 @@ type PlaylistResultProps = {
   data: GeneratedPlaylistResponse;
   connected: boolean;
   pushing: boolean;
-  onPush: () => void;
+  onPush: (existingPlaylistId?: string) => void;
   onConnect: () => void;
   onReset: () => void;
 };
@@ -25,6 +25,10 @@ export default function PlaylistResult({
   onReset,
 }: PlaylistResultProps) {
   const [copied, setCopied] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [ownedPlaylists, setOwnedPlaylists] = useState<OwnedPlaylist[] | null>(null);
+  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
+  const [target, setTarget] = useState<"new" | string>("new");
 
   const copyLink = async () => {
     if (!data.spotifyPlaylistUrl) return;
@@ -35,6 +39,29 @@ export default function PlaylistResult({
     } catch {
       /* clipboard unavailable — ignore */
     }
+  };
+
+  const openPicker = async () => {
+    setPickerOpen(true);
+    if (ownedPlaylists !== null) return;
+    setLoadingPlaylists(true);
+    try {
+      const res = await fetch("/api/spotify/playlists");
+      if (res.ok) {
+        const json = (await res.json()) as { playlists: OwnedPlaylist[] };
+        setOwnedPlaylists(json.playlists);
+      } else {
+        setOwnedPlaylists([]);
+      }
+    } catch {
+      setOwnedPlaylists([]);
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  };
+
+  const confirmPush = () => {
+    onPush(target === "new" ? undefined : target);
   };
 
   return (
@@ -122,7 +149,7 @@ export default function PlaylistResult({
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={onPush}
+            onClick={openPicker}
             disabled={pushing}
             className="spotify-glow flex flex-1 items-center justify-center gap-2 rounded-full bg-spotify px-6 py-4 text-base font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -148,6 +175,70 @@ export default function PlaylistResult({
           Generate another vibe
         </button>
       </div>
+
+      {/* New vs. existing playlist picker */}
+      <AnimatePresence>
+        {pickerOpen && !data.pushedToSpotify && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+          >
+            <p className="mb-3 text-sm font-medium text-soft">Where should this go?</p>
+
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm text-soft hover:bg-white/5">
+              <input
+                type="radio"
+                name="push-target"
+                checked={target === "new"}
+                onChange={() => setTarget("new")}
+                className="accent-spotify"
+              />
+              Create a new playlist
+            </label>
+
+            {loadingPlaylists && <p className="px-2 py-2 text-xs text-muted">Loading your playlists…</p>}
+
+            {!loadingPlaylists && ownedPlaylists && ownedPlaylists.length > 0 && (
+              <div className="mt-1 max-h-48 space-y-1 overflow-y-auto">
+                {ownedPlaylists.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm text-soft hover:bg-white/5"
+                  >
+                    <input
+                      type="radio"
+                      name="push-target"
+                      checked={target === p.id}
+                      onChange={() => setTarget(p.id)}
+                      className="accent-spotify"
+                    />
+                    <span className="flex-1 truncate">{p.name}</span>
+                    <span className="text-xs text-muted">{p.trackCount} tracks</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {!loadingPlaylists && ownedPlaylists && ownedPlaylists.length === 0 && (
+              <p className="px-2 py-2 text-xs text-muted">No existing playlists found on your account.</p>
+            )}
+
+            <p className="mt-2 px-2 text-xs text-muted">
+              Updating an existing playlist replaces its current tracks with this new list.
+            </p>
+
+            <button
+              onClick={confirmPush}
+              disabled={pushing}
+              className="spotify-glow mt-3 w-full rounded-xl bg-spotify py-2.5 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:opacity-60"
+            >
+              {pushing ? "Pushing…" : target === "new" ? "Create on Spotify" : "Update this playlist"}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {!data.pushedToSpotify && (
         <p className="mt-3 text-center text-xs text-muted">

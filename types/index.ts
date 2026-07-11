@@ -48,6 +48,15 @@ export type PushToSpotifyResponse = {
   playlistId: string;
 };
 
+/** A Spotify playlist owned by the connected user, for the "update existing" picker. */
+export type OwnedPlaylist = {
+  id: string;
+  name: string;
+  trackCount: number;
+  image?: string;
+  spotifyUrl: string;
+};
+
 /** Error shape returned by API routes. */
 export type ApiError = {
   error: string;
@@ -58,6 +67,9 @@ export type ApiError = {
 export type ApiErrorCode =
   | "not_connected"
   | "session_expired"
+  | "not_authenticated"
+  | "quota_exceeded"
+  | "upgrade_required"
   | "empty_prompt"
   | "prompt_too_long"
   | "openai_error"

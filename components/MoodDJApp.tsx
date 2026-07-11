@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ApiError, GeneratedPlaylistResponse, PushToSpotifyResponse } from "@/types";
+import { useFirebaseUser } from "@/lib/useFirebaseUser";
+import { signOutUser } from "@/lib/firebase-auth";
 import Hero from "./Hero";
 import MoodInput from "./MoodInput";
 import LoadingExperience from "./LoadingExperience";
@@ -23,38 +26,57 @@ function goToSpotifyLogin() {
 }
 
 export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProps) {
+  const router = useRouter();
+  const { user: firebaseUser, checked: authChecked } = useFirebaseUser();
   const [connected, setConnected] = useState(initialConnected);
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<GeneratedPlaylistResponse | null>(null);
   const [pushing, setPushing] = useState(false);
-  const [error, setError] = useState<{ message: string; showConnect: boolean }>({
+  const [error, setError] = useState<{
+    message: string;
+    showConnect: boolean;
+    showLogin: boolean;
+    showUpgrade: boolean;
+  }>({
     message: authError ? "Your Spotify connection failed. Please connect again." : "",
     showConnect: Boolean(authError),
+    showLogin: false,
+    showUpgrade: false,
   });
 
   const generate = async (pushToSpotify: boolean) => {
     if (!prompt.trim()) {
       setStatus("error");
-      setError({ message: "Describe a vibe before generating your playlist.", showConnect: false });
+      setError({
+        message: "Describe a vibe before generating your playlist.",
+        showConnect: false,
+        showLogin: false,
+        showUpgrade: false,
+      });
       return;
     }
+    if (!firebaseUser) {
+      router.push(`/login?vibe=${encodeURIComponent(prompt.trim())}`);
+      return;
+    }
+
     setStatus("loading");
     try {
+      const idToken = await firebaseUser.getIdToken();
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ prompt, pushToSpotify }),
       });
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as ApiError;
         const showConnect = data.code === "not_connected" || data.code === "session_expired";
+        const showLogin = data.code === "not_authenticated";
+        const showUpgrade = data.code === "quota_exceeded" || data.code === "upgrade_required";
         if (showConnect) setConnected(false);
-        setError({
-          message: data.error || "Something went wrong. Please try again.",
-          showConnect,
-        });
+        setError({ message: data.error || "Something went wrong. Please try again.", showConnect, showLogin, showUpgrade });
         setStatus("error");
         return;
       }
@@ -63,32 +85,47 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       setResult(data);
       setStatus("result");
     } catch {
-      setError({ message: "Network error. Please check your connection and try again.", showConnect: false });
+      setError({
+        message: "Network error. Please check your connection and try again.",
+        showConnect: false,
+        showLogin: false,
+        showUpgrade: false,
+      });
       setStatus("error");
     }
   };
 
-  const pushCurrentPlaylist = async () => {
+  const pushCurrentPlaylist = async (existingPlaylistId?: string) => {
     if (!result || result.pushedToSpotify) return;
+    if (!firebaseUser) {
+      router.push("/login");
+      return;
+    }
     setPushing(true);
     try {
+      const idToken = await firebaseUser.getIdToken();
       const res = await fetch("/api/push-to-spotify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           playlistName: result.playlistName,
           playlistDescription: result.playlistDescription,
           trackUris: result.tracks.map((t) => t.uri),
+          existingPlaylistId,
         }),
       });
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as ApiError;
         const showConnect = data.code === "not_connected" || data.code === "session_expired";
+        const showLogin = data.code === "not_authenticated";
+        const showUpgrade = data.code === "upgrade_required";
         if (showConnect) setConnected(false);
         setError({
           message: data.error || "Could not push this playlist to Spotify.",
           showConnect,
+          showLogin,
+          showUpgrade,
         });
         setStatus("error");
         return;
@@ -97,7 +134,12 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       const data = (await res.json()) as PushToSpotifyResponse;
       setResult({ ...result, pushedToSpotify: true, ...data });
     } catch {
-      setError({ message: "Network error. Please check your connection and try again.", showConnect: false });
+      setError({
+        message: "Network error. Please check your connection and try again.",
+        showConnect: false,
+        showLogin: false,
+        showUpgrade: false,
+      });
       setStatus("error");
     } finally {
       setPushing(false);
@@ -111,24 +153,45 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
 
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
-      {/* Top bar with logout when connected */}
-      <div className="mb-2 flex items-center justify-between">
+      {/* Top bar: Mood DJ account + Spotify connection */}
+      <div className="mb-2 flex items-center justify-between gap-2">
         <AnimatedLogo size={32} withWordmark />
-        {connected ? (
-          <a
-            href="/api/auth/spotify/logout"
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
-          >
-            Connected · Logout
-          </a>
-        ) : (
-          <button
-            onClick={goToSpotifyLogin}
-            className="rounded-full border border-spotify/30 bg-spotify/10 px-4 py-2 text-xs font-medium text-spotify-bright transition-colors hover:bg-spotify/20"
-          >
-            Connect Spotify
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {authChecked && (
+            <>
+              {firebaseUser ? (
+                <button
+                  onClick={() => signOutUser()}
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
+                >
+                  {firebaseUser.email} · Sign out
+                </button>
+              ) : (
+                <a
+                  href="/login"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
+                >
+                  Sign in
+                </a>
+              )}
+            </>
+          )}
+          {connected ? (
+            <a
+              href="/api/auth/spotify/logout"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
+            >
+              Spotify connected
+            </a>
+          ) : (
+            <button
+              onClick={goToSpotifyLogin}
+              className="rounded-full border border-spotify/30 bg-spotify/10 px-4 py-2 text-xs font-medium text-spotify-bright transition-colors hover:bg-spotify/20"
+            >
+              Connect Spotify
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-10 sm:mt-16">
@@ -170,6 +233,8 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
               <ErrorCard
                 message={error.message}
                 showConnect={error.showConnect}
+                showLogin={error.showLogin}
+                showUpgrade={error.showUpgrade}
                 onRetry={reset}
                 onConnect={goToSpotifyLogin}
               />

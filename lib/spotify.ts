@@ -145,6 +145,73 @@ export async function addTracksToPlaylist(
   }
 }
 
+type SpotifyPlaylistItem = {
+  id: string;
+  name: string;
+  images?: Array<{ url: string }>;
+  tracks: { total: number };
+  external_urls: { spotify: string };
+  owner: { id: string };
+};
+
+/** List playlists owned by the connected user (for the "update existing" picker). */
+export async function listOwnedPlaylists(
+  accessToken: string,
+  userId: string
+): Promise<Array<{ id: string; name: string; trackCount: number; image?: string; spotifyUrl: string }>> {
+  const all: SpotifyPlaylistItem[] = [];
+  let url = "/me/playlists?limit=50";
+  while (url) {
+    const res = await spotifyFetch(accessToken, url);
+    if (!res.ok) {
+      throw new SpotifyApiError("Could not load your Spotify playlists", res.status);
+    }
+    const data = (await res.json()) as { items: SpotifyPlaylistItem[]; next: string | null };
+    all.push(...data.items);
+    url = data.next ? data.next.replace(SPOTIFY_API, "") : "";
+  }
+
+  return all
+    .filter((p) => p.owner?.id === userId)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      trackCount: p.tracks.total,
+      image: p.images?.[0]?.url,
+      spotifyUrl: p.external_urls.spotify,
+    }));
+}
+
+/**
+ * Replace all tracks in an existing playlist with a new set (handles the
+ * 100-URI batch limit: first batch replaces, the rest are appended).
+ */
+export async function replacePlaylistTracks(
+  accessToken: string,
+  playlistId: string,
+  uris: string[]
+): Promise<void> {
+  const first = uris.slice(0, 100);
+  const res = await spotifyFetch(accessToken, `/playlists/${playlistId}/tracks`, {
+    method: "PUT",
+    body: JSON.stringify({ uris: first }),
+  });
+  if (!res.ok) {
+    throw new SpotifyApiError("Could not update playlist", res.status);
+  }
+
+  for (let i = 100; i < uris.length; i += 100) {
+    const batch = uris.slice(i, i + 100);
+    const appendRes = await spotifyFetch(accessToken, `/playlists/${playlistId}/tracks`, {
+      method: "POST",
+      body: JSON.stringify({ uris: batch }),
+    });
+    if (!appendRes.ok) {
+      throw new SpotifyApiError("Could not update playlist", appendRes.status);
+    }
+  }
+}
+
 let appToken: { accessToken: string; expiresAt: number } | null = null;
 
 /**

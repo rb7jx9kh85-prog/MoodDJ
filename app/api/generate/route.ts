@@ -19,6 +19,7 @@ import {
 } from "@/lib/spotify";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
 import { sanitizePrompt, dedupeByUri, shuffle, MAX_PROMPT_LENGTH } from "@/lib/utils";
+import { getUidFromRequest, getUserQuota, canGenerate, canPushToSpotify, recordGeneration } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -54,7 +55,21 @@ async function withFreshToken<T>(
 }
 
 export async function POST(req: NextRequest) {
-  // 1. Parse & validate the request.
+  // 1. Mood DJ account + plan/quota check.
+  const uid = await getUidFromRequest(req);
+  if (!uid) {
+    return errorResponse("Sign in to your Mood DJ account first.", "not_authenticated", 401);
+  }
+  const quota = await getUserQuota(uid);
+  if (!canGenerate(quota)) {
+    return errorResponse(
+      "You've used your free playlist. Upgrade to Flow for unlimited generation.",
+      "quota_exceeded",
+      403
+    );
+  }
+
+  // 2. Parse & validate the request.
   let body: unknown;
   try {
     body = await req.json();
@@ -79,7 +94,16 @@ export async function POST(req: NextRequest) {
     return errorResponse("Describe a vibe before generating your playlist.", "empty_prompt", 400);
   }
 
-  // 2. Only require a connected Spotify account when we're actually going to
+  // 3. Pushing to Spotify is a Flow Sync feature.
+  if (pushToSpotify && !canPushToSpotify(quota)) {
+    return errorResponse(
+      "Pushing to Spotify is a Flow Sync feature. Upgrade to publish this playlist.",
+      "upgrade_required",
+      403
+    );
+  }
+
+  // 4. Only require a connected Spotify account when we're actually going to
   // write to it — generating a preview only needs an app-level token.
   let userAccessToken: string | null = null;
   if (pushToSpotify) {
@@ -93,7 +117,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
+  // 5. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
   let plan;
   try {
     plan = await generateMoodPlan(prompt);
@@ -155,6 +179,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (!pushToSpotify || !userAccessToken) {
+      await recordGeneration(uid);
       const response: GeneratedPlaylistResponse = { ...base, pushedToSpotify: false };
       return NextResponse.json(response);
     }
@@ -177,6 +202,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await recordGeneration(uid);
     const response: GeneratedPlaylistResponse = {
       ...base,
       pushedToSpotify: true,

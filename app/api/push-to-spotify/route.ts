@@ -11,11 +11,13 @@ import {
   getSpotifyMe,
   createPlaylist,
   addTracksToPlaylist,
+  replacePlaylistTracks,
   refreshSpotifyToken,
   SpotifyAuthError,
   SpotifyApiError,
 } from "@/lib/spotify";
 import { sanitizePrompt } from "@/lib/utils";
+import { getUidFromRequest, getUserQuota, canPushToSpotify } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -44,8 +46,27 @@ async function withFreshToken<T>(
   }
 }
 
-/** Publish an already-generated playlist (from /api/generate) to the user's Spotify account. */
+/**
+ * Publish an already-generated playlist (from /api/generate) to the user's
+ * Spotify account — either as a new playlist, or by replacing the tracks of
+ * an existing one they own (existingPlaylistId).
+ */
 export async function POST(req: NextRequest) {
+  // 1. Mood DJ account + plan check — pushing to Spotify is Flow Sync only.
+  const uid = await getUidFromRequest(req);
+  if (!uid) {
+    return errorResponse("Sign in to your Mood DJ account first.", "not_authenticated", 401);
+  }
+  const quota = await getUserQuota(uid);
+  if (!canPushToSpotify(quota)) {
+    return errorResponse(
+      "Pushing to Spotify is a Flow Sync feature. Upgrade to publish this playlist.",
+      "upgrade_required",
+      403
+    );
+  }
+
+  // 2. Spotify connection check.
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
     return errorResponse(
@@ -62,14 +83,16 @@ export async function POST(req: NextRequest) {
     return errorResponse("Invalid request.", "invalid_tracks", 400);
   }
 
-  const { playlistName, playlistDescription, trackUris } = body as {
+  const { playlistName, playlistDescription, trackUris, existingPlaylistId } = body as {
     playlistName?: unknown;
     playlistDescription?: unknown;
     trackUris?: unknown;
+    existingPlaylistId?: unknown;
   };
 
   const name = sanitizePrompt(playlistName).slice(0, 100) || "Mood DJ Playlist";
   const description = typeof playlistDescription === "string" ? playlistDescription.slice(0, 300) : "";
+  const targetPlaylistId = typeof existingPlaylistId === "string" && existingPlaylistId ? existingPlaylistId : null;
 
   if (
     !Array.isArray(trackUris) ||
@@ -80,26 +103,34 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const me = await withFreshToken(accessToken, (t) => getSpotifyMe(t));
-    const playlist = await withFreshToken(accessToken, (t) =>
-      createPlaylist(t, me.id, name, description)
-    );
+    let playlistId: string;
+    let playlistUrl: string;
 
-    try {
-      await withFreshToken(accessToken, (t) =>
-        addTracksToPlaylist(t, playlist.id, trackUris as string[])
-      );
-    } catch {
-      return errorResponse(
-        "Your playlist was created but tracks could not be added. Please try again.",
-        "playlist_partial",
-        502
-      );
+    if (targetPlaylistId) {
+      // Update: the caller only owns playlists returned by /api/spotify/playlists,
+      // and Spotify itself rejects the write (403) if this user doesn't own it.
+      await withFreshToken(accessToken, (t) => replacePlaylistTracks(t, targetPlaylistId, trackUris as string[]));
+      playlistId = targetPlaylistId;
+      playlistUrl = `https://open.spotify.com/playlist/${targetPlaylistId}`;
+    } else {
+      const me = await withFreshToken(accessToken, (t) => getSpotifyMe(t));
+      const playlist = await withFreshToken(accessToken, (t) => createPlaylist(t, me.id, name, description));
+      try {
+        await withFreshToken(accessToken, (t) => addTracksToPlaylist(t, playlist.id, trackUris as string[]));
+      } catch {
+        return errorResponse(
+          "Your playlist was created but tracks could not be added. Please try again.",
+          "playlist_partial",
+          502
+        );
+      }
+      playlistId = playlist.id;
+      playlistUrl = playlist.url;
     }
 
     const response: PushToSpotifyResponse = {
-      spotifyPlaylistUrl: playlist.url,
-      playlistId: playlist.id,
+      spotifyPlaylistUrl: playlistUrl,
+      playlistId,
     };
     return NextResponse.json(response);
   } catch (err) {

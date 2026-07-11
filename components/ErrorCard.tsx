@@ -1,15 +1,25 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 type ErrorCardProps = {
   message: string;
   showConnect?: boolean;
+  showLogin?: boolean;
+  showUpgrade?: boolean;
   onRetry?: () => void;
   onConnect?: () => void;
 };
 
-export default function ErrorCard({ message, showConnect, onRetry, onConnect }: ErrorCardProps) {
+export default function ErrorCard({
+  message,
+  showConnect,
+  showLogin,
+  showUpgrade,
+  onRetry,
+  onConnect,
+}: ErrorCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -21,7 +31,7 @@ export default function ErrorCard({ message, showConnect, onRetry, onConnect }: 
       </div>
       <p className="mt-4 text-lg text-soft">{message}</p>
 
-      <div className="mt-6 flex justify-center gap-3">
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
         {showConnect && onConnect && (
           <button
             onClick={onConnect}
@@ -29,6 +39,22 @@ export default function ErrorCard({ message, showConnect, onRetry, onConnect }: 
           >
             Connect Spotify
           </button>
+        )}
+        {showLogin && (
+          <Link
+            href="/login"
+            className="spotify-glow rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black hover:bg-spotify-bright"
+          >
+            Sign in
+          </Link>
+        )}
+        {showUpgrade && (
+          <Link
+            href="/pricing"
+            className="spotify-glow rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black hover:bg-spotify-bright"
+          >
+            See plans
+          </Link>
         )}
         {onRetry && (
           <button
