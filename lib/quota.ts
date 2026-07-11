@@ -19,7 +19,11 @@ export async function getUidFromRequest(req: NextRequest): Promise<string | null
   try {
     const decoded = await getAdminAuth().verifyIdToken(match[1]);
     return decoded.uid;
-  } catch {
+  } catch (err) {
+    console.error("[quota] ID token verification failed", {
+      message: (err as Error)?.message,
+      code: (err as { code?: string })?.code,
+    });
     return null;
   }
 }
