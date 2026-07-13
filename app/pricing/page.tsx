@@ -1,6 +1,15 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
+
+import {
+  completePlanOnboarding,
+  type SelectablePlan,
+} from "@/lib/plan-onboarding";
+
+import { useFirebaseUser } from "@/lib/useFirebaseUser";
 import { motion } from "framer-motion";
 import { Check, X, Sparkles } from "lucide-react";
 import Background from "@/components/Background";
