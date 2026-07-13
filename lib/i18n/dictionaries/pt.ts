@@ -182,6 +182,15 @@ const pt: Dictionary = {
     hintConnected: "Gera uma pré-visualização, ou publica-a diretamente na tua conta Spotify.",
     hintNotConnected: "Podes gerar uma pré-visualização sem ligares — o Spotify só é necessário para publicar a playlist.",
     charsLeft: "caracteres restantes",
+    options: {
+      title: "Definições",
+      trackCount: "Número de faixas",
+      language: "Idioma das músicas",
+      auto: "Auto",
+      energy: "Energia",
+      chill: "Calmo",
+      intense: "Intenso",
+    },
   },
   settings: {
     title: "Definições",

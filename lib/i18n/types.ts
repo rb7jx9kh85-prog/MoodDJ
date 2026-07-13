@@ -105,6 +105,15 @@ export type Dictionary = {
     hintConnected: string;
     hintNotConnected: string;
     charsLeft: string;
+    options: {
+      title: string;
+      trackCount: string;
+      language: string;
+      auto: string;
+      energy: string;
+      chill: string;
+      intense: string;
+    };
   };
   settings: {
     title: string;

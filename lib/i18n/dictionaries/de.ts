@@ -183,6 +183,15 @@ const de: Dictionary = {
     hintConnected: "Erstelle eine Vorschau oder veröffentliche sie direkt in deinem Spotify-Konto.",
     hintNotConnected: "Du kannst eine Vorschau ohne Verbindung erstellen — Spotify wird nur zum Veröffentlichen benötigt.",
     charsLeft: "Zeichen übrig",
+    options: {
+      title: "Einstellungen",
+      trackCount: "Anzahl der Titel",
+      language: "Sprache der Songs",
+      auto: "Auto",
+      energy: "Energie",
+      chill: "Ruhig",
+      intense: "Intensiv",
+    },
   },
   settings: {
     title: "Einstellungen",

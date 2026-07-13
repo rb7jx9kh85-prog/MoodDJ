@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import type { ApiError, GeneratedPlaylistResponse, PushToSpotifyResponse } from "@/types";
+import type {
+  ApiError,
+  GeneratedPlaylistResponse,
+  GenerationOptions,
+  PushToSpotifyResponse,
+} from "@/types";
 import { useFirebaseUser } from "@/lib/useFirebaseUser";
 import { signOutUser } from "@/lib/firebase-auth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
@@ -49,7 +54,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     showUpgrade: false,
   });
 
-  const generate = async (pushToSpotify: boolean) => {
+  const generate = async (pushToSpotify: boolean, options: GenerationOptions) => {
     if (!prompt.trim()) {
       setStatus("error");
       setError({
@@ -71,7 +76,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ prompt, pushToSpotify }),
+        body: JSON.stringify({ prompt, pushToSpotify, options }),
       });
 
       if (!res.ok) {

@@ -188,6 +188,15 @@ const fr: Dictionary = {
     hintNotConnected:
       "Tu peux générer un aperçu sans te connecter — Spotify n'est nécessaire que pour publier.",
     charsLeft: "caractères restants",
+    options: {
+      title: "Réglages",
+      trackCount: "Nombre de titres",
+      language: "Langue des titres",
+      auto: "Auto",
+      energy: "Énergie",
+      chill: "Calme",
+      intense: "Intense",
+    },
   },
   settings: {
     title: "Réglages",

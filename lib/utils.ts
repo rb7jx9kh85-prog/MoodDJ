@@ -24,6 +24,42 @@ export function sanitizePrompt(input: unknown): string {
     .slice(0, MAX_PROMPT_LENGTH);
 }
 
+import type { GenerationOptions } from "@/types";
+
+/** Song languages the generation options UI offers ("auto" = AI decides). */
+export const SONG_LANGUAGES = ["auto", "en", "fr", "de", "es", "pt", "it"] as const;
+
+export const MIN_TRACK_COUNT = 5;
+export const MAX_TRACK_COUNT = 30;
+
+export const DEFAULT_GENERATION_OPTIONS: GenerationOptions = {
+  trackCount: 15,
+  language: "auto",
+  energy: 60,
+};
+
+/** Never trust client-sent options — clamp/whitelist everything server-side. */
+export function sanitizeGenerationOptions(raw: unknown): GenerationOptions {
+  const r = (raw ?? {}) as Record<string, unknown>;
+
+  const trackCountNum = typeof r.trackCount === "number" ? Math.round(r.trackCount) : NaN;
+  const trackCount = Number.isFinite(trackCountNum)
+    ? Math.min(MAX_TRACK_COUNT, Math.max(MIN_TRACK_COUNT, trackCountNum))
+    : DEFAULT_GENERATION_OPTIONS.trackCount;
+
+  const language =
+    typeof r.language === "string" && (SONG_LANGUAGES as readonly string[]).includes(r.language)
+      ? r.language
+      : DEFAULT_GENERATION_OPTIONS.language;
+
+  const energyNum = typeof r.energy === "number" ? Math.round(r.energy) : NaN;
+  const energy = Number.isFinite(energyNum)
+    ? Math.min(100, Math.max(0, energyNum))
+    : DEFAULT_GENERATION_OPTIONS.energy;
+
+  return { trackCount, language, energy };
+}
+
 /** Deduplicate tracks by Spotify URI, preserving order. */
 export function dedupeByUri<T extends { uri: string }>(items: T[]): T[] {
   const seen = new Set<string>();

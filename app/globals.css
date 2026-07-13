@@ -211,6 +211,62 @@ body {
     transform-style: preserve-3d;
     will-change: transform;
   }
+
+  /* Branded range slider: green fill driven by --fill, glowing thumb.
+     Used by the generation options panel (track count + energy). */
+  .mood-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      #1db954 0%,
+      #1ed760 var(--fill, 50%),
+      rgba(255, 255, 255, 0.12) var(--fill, 50%),
+      rgba(255, 255, 255, 0.12) 100%
+    );
+    outline: none;
+    cursor: pointer;
+  }
+  .mood-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 9999px;
+    background: #1ed760;
+    border: 3px solid #050505;
+    box-shadow:
+      0 0 12px rgba(30, 215, 96, 0.7),
+      0 0 28px rgba(30, 215, 96, 0.3);
+    transition: transform 150ms ease, box-shadow 150ms ease;
+  }
+  .mood-slider::-webkit-slider-thumb:hover,
+  .mood-slider::-webkit-slider-thumb:active {
+    transform: scale(1.18);
+    box-shadow:
+      0 0 16px rgba(30, 215, 96, 0.9),
+      0 0 40px rgba(30, 215, 96, 0.45);
+  }
+  .mood-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 9999px;
+    background: #1ed760;
+    border: 3px solid #050505;
+    box-shadow:
+      0 0 12px rgba(30, 215, 96, 0.7),
+      0 0 28px rgba(30, 215, 96, 0.3);
+    transition: transform 150ms ease;
+  }
+  .mood-slider::-moz-range-thumb:hover {
+    transform: scale(1.18);
+  }
+  .mood-slider::-moz-range-track {
+    background: transparent;
+  }
 }
 
 /* Custom scrollbar (desktop) */

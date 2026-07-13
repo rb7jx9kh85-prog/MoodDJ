@@ -185,6 +185,15 @@ const en: Dictionary = {
     hintNotConnected:
       "You can generate a preview without connecting — Spotify is only needed to push the playlist.",
     charsLeft: "characters left",
+    options: {
+      title: "Settings",
+      trackCount: "Number of tracks",
+      language: "Song language",
+      auto: "Auto",
+      energy: "Energy",
+      chill: "Chill",
+      intense: "Intense",
+    },
   },
   settings: {
     title: "Settings",

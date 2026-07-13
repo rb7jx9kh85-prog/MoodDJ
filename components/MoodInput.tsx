@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { MAX_PROMPT_LENGTH } from "@/lib/utils";
+import type { GenerationOptions } from "@/types";
+import { MAX_PROMPT_LENGTH, DEFAULT_GENERATION_OPTIONS } from "@/lib/utils";
 import { fadeUp } from "@/lib/animations";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import GenerationOptionsPanel from "@/components/GenerationOptions";
 
 const EXAMPLES = [
   "Driving at night under the rain",
@@ -18,7 +21,7 @@ const EXAMPLES = [
 type MoodInputProps = {
   value: string;
   onChange: (value: string) => void;
-  onGenerate: (pushToSpotify: boolean) => void;
+  onGenerate: (pushToSpotify: boolean, options: GenerationOptions) => void;
   onConnect: () => void;
   loading: boolean;
   connected: boolean;
@@ -33,6 +36,7 @@ export default function MoodInput({
   connected,
 }: MoodInputProps) {
   const { t } = useLanguage();
+  const [options, setOptions] = useState<GenerationOptions>(DEFAULT_GENERATION_OPTIONS);
   const remaining = MAX_PROMPT_LENGTH - value.length;
   const canGenerate = value.trim().length > 0 && !loading;
 
@@ -45,7 +49,7 @@ export default function MoodInput({
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canGenerate) {
               e.preventDefault();
-              onGenerate(connected);
+              onGenerate(connected, options);
             }
           }}
           placeholder={t.app.generatePlaceholder}
@@ -63,7 +67,7 @@ export default function MoodInput({
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => onGenerate(false)}
+              onClick={() => onGenerate(false, options)}
               disabled={!canGenerate}
               className="hover-lift inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-soft transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -74,7 +78,7 @@ export default function MoodInput({
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => onGenerate(true)}
+                onClick={() => onGenerate(true, options)}
                 disabled={!canGenerate}
                 className="spotify-glow inline-flex items-center gap-2 rounded-full bg-spotify px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -95,6 +99,8 @@ export default function MoodInput({
           </div>
         </div>
       </div>
+
+      <GenerationOptionsPanel value={options} onChange={setOptions} disabled={loading} />
 
       <p className="mt-3 text-center text-sm text-muted">
         {connected ? t.app.hintConnected : t.app.hintNotConnected}

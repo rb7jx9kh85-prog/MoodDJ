@@ -182,6 +182,15 @@ const sv: Dictionary = {
     hintConnected: "Generera en förhandsvisning, eller publicera den direkt till ditt Spotify-konto.",
     hintNotConnected: "Du kan generera en förhandsvisning utan att ansluta — Spotify behövs bara för att publicera spellistan.",
     charsLeft: "tecken kvar",
+    options: {
+      title: "Inställningar",
+      trackCount: "Antal låtar",
+      language: "Språk på låtarna",
+      auto: "Auto",
+      energy: "Energi",
+      chill: "Lugn",
+      intense: "Intensiv",
+    },
   },
   settings: {
     title: "Inställningar",

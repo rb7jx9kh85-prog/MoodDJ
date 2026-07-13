@@ -18,7 +18,13 @@ import {
   SpotifyApiError,
 } from "@/lib/spotify";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
-import { sanitizePrompt, dedupeByUri, shuffle, MAX_PROMPT_LENGTH } from "@/lib/utils";
+import {
+  sanitizePrompt,
+  sanitizeGenerationOptions,
+  dedupeByUri,
+  shuffle,
+  MAX_PROMPT_LENGTH,
+} from "@/lib/utils";
 import { getUidFromRequest, getUserQuota, canGenerate, canPushToSpotify, recordGeneration } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +84,7 @@ export async function POST(req: NextRequest) {
   }
   const rawPrompt = (body as { prompt?: unknown })?.prompt;
   const pushToSpotify = (body as { pushToSpotify?: unknown })?.pushToSpotify === true;
+  const options = sanitizeGenerationOptions((body as { options?: unknown })?.options);
 
   if (typeof rawPrompt !== "string" || rawPrompt.trim().length === 0) {
     return errorResponse("Describe a vibe before generating your playlist.", "empty_prompt", 400);
@@ -120,7 +127,7 @@ export async function POST(req: NextRequest) {
   // 5. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
   let plan;
   try {
-    plan = await generateMoodPlan(prompt);
+    plan = await generateMoodPlan(prompt, options);
   } catch (err) {
     if (err instanceof OpenAIGenerationError) {
       // If OpenAI is simply not configured, surface a clear error; otherwise
@@ -132,9 +139,9 @@ export async function POST(req: NextRequest) {
           502
         );
       }
-      plan = fallbackMoodPlan(prompt);
+      plan = fallbackMoodPlan(prompt, options);
     } else {
-      plan = fallbackMoodPlan(prompt);
+      plan = fallbackMoodPlan(prompt, options);
     }
   }
 
@@ -150,7 +157,9 @@ export async function POST(req: NextRequest) {
       return searchTracks(await getAppAccessToken(), query, limit);
     };
 
-    const perQuery = 8;
+    // Fetch more per query for longer playlists so dedupe still leaves
+    // enough unique tracks to hit the requested count.
+    const perQuery = options.trackCount >= 20 ? 12 : 8;
     const collected: Track[] = [];
     const results = await Promise.all(
       plan.searchQueries.map((q) => searchWith(q, perQuery).catch(() => [] as Track[]))
@@ -162,9 +171,10 @@ export async function POST(req: NextRequest) {
       return errorResponse("No tracks found for this mood. Try a different vibe.", "no_tracks", 422);
     }
 
-    // 5. Select ~trackCount tracks (lightly shuffled for variety).
-    const target = Math.min(plan.trackCount || 15, 20);
-    const selected = shuffle(unique).slice(0, Math.max(target, Math.min(10, unique.length)));
+    // 5. Select exactly the requested number of tracks (lightly shuffled),
+    // or as many as the searches produced if that's fewer.
+    const target = Math.min(plan.trackCount || options.trackCount, 30);
+    const selected = shuffle(unique).slice(0, Math.min(target, unique.length));
 
     const base = {
       playlistName: plan.playlistName,

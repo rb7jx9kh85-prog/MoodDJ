@@ -183,6 +183,15 @@ const no: Dictionary = {
     hintConnected: "Generer en forhåndsvisning, eller publiser den rett til Spotify-kontoen din.",
     hintNotConnected: "Du kan generere en forhåndsvisning uten å koble til — Spotify trengs bare for å publisere spillelisten.",
     charsLeft: "tegn igjen",
+    options: {
+      title: "Innstillinger",
+      trackCount: "Antall spor",
+      language: "Språk på sangene",
+      auto: "Auto",
+      energy: "Energi",
+      chill: "Rolig",
+      intense: "Intens",
+    },
   },
   settings: {
     title: "Innstillinger",

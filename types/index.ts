@@ -14,6 +14,16 @@ export type MoodPlan = {
   transitionLogic: string;
 };
 
+/** User-tunable generation settings sent along with the vibe prompt. */
+export type GenerationOptions = {
+  /** Desired playlist length (clamped server-side to 5-30). */
+  trackCount: number;
+  /** Preferred song language ("auto" lets the AI decide from the vibe). */
+  language: string;
+  /** Target energy 0-100. */
+  energy: number;
+};
+
 /** A single Spotify track, normalised for the frontend. */
 export type Track = {
   id: string;

@@ -183,6 +183,15 @@ const es: Dictionary = {
     hintConnected: "Genera una vista previa, o publícala directamente en tu cuenta de Spotify.",
     hintNotConnected: "Puedes generar una vista previa sin conectar — Spotify solo hace falta para publicar la playlist.",
     charsLeft: "caracteres restantes",
+    options: {
+      title: "Ajustes",
+      trackCount: "Número de canciones",
+      language: "Idioma de las canciones",
+      auto: "Auto",
+      energy: "Energía",
+      chill: "Tranquilo",
+      intense: "Intenso",
+    },
   },
   settings: {
     title: "Ajustes",
