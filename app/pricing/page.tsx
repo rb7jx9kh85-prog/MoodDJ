@@ -1,23 +1,15 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  Check,
-  X,
-  Sparkles,
-  Loader2,
-} from "lucide-react";
+import { Check, X, Sparkles, Loader2 } from "lucide-react";
 
 import Background from "@/components/Background";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-import {
-  completePlanOnboarding,
-  type SelectablePlan,
-} from "@/lib/plan-onboarding";
+import { type SelectablePlan } from "@/lib/plans";
 
 import { useFirebaseUser } from "@/lib/useFirebaseUser";
 import { fadeUp, staggerContainer } from "@/lib/animations";
@@ -67,12 +59,6 @@ function PricingContent() {
   const searchParams = useSearchParams();
   const { user, checked } = useFirebaseUser();
 
-  const [selectingPlan, setSelectingPlan] =
-    useState<SelectablePlan | null>(null);
-
-  const [selectionError, setSelectionError] =
-    useState<string | null>(null);
-
   const initialPrompt = searchParams.get("vibe") ?? "";
 
   const plans = t.pricing.plans.map((plan, index) => ({
@@ -80,13 +66,13 @@ function PricingContent() {
     ...planMeta[index],
   }));
 
-  async function handleSelectPlan(planId: SelectablePlan) {
-    setSelectionError(null);
+  // Firebase auth state hasn't resolved yet — don't let anyone pick a plan
+  // (and possibly bounce to /login) based on a stale "not connected" guess.
+  if (!checked) {
+    return <PricingLoading />;
+  }
 
-    if (!checked) {
-      return;
-    }
-
+  function handleSelectPlan(planId: SelectablePlan) {
     if (!user) {
       const loginTarget = initialPrompt
         ? `/login?vibe=${encodeURIComponent(initialPrompt)}`
@@ -96,30 +82,10 @@ function PricingContent() {
       return;
     }
 
-    setSelectingPlan(planId);
+    const params = new URLSearchParams({ plan: planId });
+    if (initialPrompt) params.set("vibe", initialPrompt);
 
-    try {
-      await completePlanOnboarding(planId);
-
-      const appTarget = initialPrompt
-        ? `/app?vibe=${encodeURIComponent(initialPrompt)}`
-        : "/app";
-
-      router.replace(appTarget);
-    } catch (error) {
-      console.error(
-        "[pricing] Plan selection failed",
-        error
-      );
-
-      setSelectionError(
-        error instanceof Error
-          ? error.message
-          : "Impossible d’enregistrer ton choix."
-      );
-    } finally {
-      setSelectingPlan(null);
-    }
+    router.push(`/checkout?${params.toString()}`);
   }
 
   return (
@@ -149,9 +115,7 @@ function PricingContent() {
               className="mx-auto mt-6 max-w-4xl text-4xl font-bold tracking-tight text-soft sm:text-5xl lg:text-6xl"
             >
               {t.pricing.title}{" "}
-              <span className="text-spotify">
-                {t.pricing.titleHighlight}
-              </span>
+              <span className="text-spotify">{t.pricing.titleHighlight}</span>
             </motion.h1>
 
             <motion.p
@@ -161,12 +125,6 @@ function PricingContent() {
               {t.pricing.subtitle}
             </motion.p>
           </motion.section>
-
-          {selectionError && (
-            <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-center text-sm text-red-300">
-              {selectionError}
-            </div>
-          )}
 
           <motion.section
             initial="hidden"
@@ -192,33 +150,22 @@ function PricingContent() {
                 )}
 
                 <div>
-                  <h2 className="text-xl font-semibold text-soft">
-                    {plan.name}
-                  </h2>
+                  <h2 className="text-xl font-semibold text-soft">{plan.name}</h2>
 
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-muted">
-                    {plan.tagline}
-                  </p>
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-muted">{plan.tagline}</p>
                 </div>
 
                 <div className="mt-7">
                   <div className="flex items-end gap-2">
-                    <span className="text-4xl font-bold tracking-tight text-soft">
-                      {plan.price}
-                    </span>
+                    <span className="text-4xl font-bold tracking-tight text-soft">{plan.price}</span>
 
-                    <span className="pb-1 text-sm text-muted">
-                      {plan.period}
-                    </span>
+                    <span className="pb-1 text-sm text-muted">{plan.period}</span>
                   </div>
                 </div>
 
                 <ul className="mt-8 flex-1 space-y-4">
                   {plan.features.map((feature) => (
-                    <li
-                      key={feature.text}
-                      className="flex items-start gap-3 text-sm"
-                    >
+                    <li key={feature.text} className="flex items-start gap-3 text-sm">
                       {feature.included ? (
                         <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-spotify/15 text-spotify">
                           <Check className="size-3.5" />
@@ -229,41 +176,22 @@ function PricingContent() {
                         </span>
                       )}
 
-                      <span
-                        className={
-                          feature.included
-                            ? "text-soft"
-                            : "text-muted"
-                        }
-                      >
-                        {feature.text}
-                      </span>
+                      <span className={feature.included ? "text-soft" : "text-muted"}>{feature.text}</span>
                     </li>
                   ))}
                 </ul>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    void handleSelectPlan(plan.id);
-                  }}
-                  disabled={
-                    selectingPlan !== null || !checked
-                  }
+                  onClick={() => handleSelectPlan(plan.id)}
                   className={cn(
-                    "mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60",
+                    "mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02]",
                     plan.highlighted
                       ? "bg-spotify text-black hover:bg-spotify-bright"
                       : "border border-white/15 bg-white/5 text-soft hover:border-spotify/40 hover:bg-white/10"
                   )}
                 >
-                  {selectingPlan === plan.id && (
-                    <Loader2 className="size-4 animate-spin" />
-                  )}
-
-                  {selectingPlan === plan.id
-                    ? "Enregistrement…"
-                    : plan.cta}
+                  {plan.cta}
                 </button>
               </motion.article>
             ))}
@@ -282,9 +210,7 @@ function PricingLoading() {
       <div className="text-center">
         <Loader2 className="mx-auto size-9 animate-spin text-spotify" />
 
-        <p className="mt-4 text-sm text-white/60">
-          Chargement des offres…
-        </p>
+        <p className="mt-4 text-sm text-white/60">Chargement des offres…</p>
       </div>
     </main>
   );

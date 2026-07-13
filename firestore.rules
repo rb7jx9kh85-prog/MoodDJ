@@ -12,6 +12,10 @@ service cloud.firestore {
 
       allow read: if isOwner();
 
+      // Initial profile creation right after sign-up/sign-in. Plan always
+      // starts at "free" / unselected — the fake checkout is the only path
+      // that can ever change it, and it runs server-side with the Admin SDK
+      // (which is not subject to these rules at all).
       allow create: if isOwner()
         && request.resource.data.keys().hasAll([
           "uid",
@@ -38,27 +42,19 @@ service cloud.firestore {
         && request.resource.data.selectedPlan == null
         && request.resource.data.onboardingCompleted == false;
 
+      // The browser may only ever touch its own basic profile fields.
+      // Plan, selectedPlan, planStatus, onboardingCompleted, quotas, and
+      // every checkout/discount/price field are exclusively written by the
+      // server (Admin SDK, via /api/checkout/complete and /api/generate),
+      // which bypasses these rules entirely — so leaving them out here is
+      // what makes them "server-only" in practice.
       allow update: if isOwner()
         && request.resource.data
           .diff(resource.data)
           .affectedKeys()
-          .hasOnly([
-            "email",
-            "displayName",
-            "photoURL",
-            "selectedPlan",
-            "onboardingCompleted",
-            "onboardingCompletedAt"
-          ])
-        && (
-          request.resource.data.selectedPlan == "free"
-          || request.resource.data.selectedPlan == "starter"
-          || request.resource.data.selectedPlan == "creator"
-          || request.resource.data.selectedPlan == "unlimited"
-        )
-        && request.resource.data.onboardingCompleted == true;
+          .hasOnly(["email", "displayName", "photoURL"]);
 
-      allow delete: if isOwner();
+      allow delete: if false;
     }
 
     match /{document=**} {
