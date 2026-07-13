@@ -20,11 +20,33 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 // Prices and layout flags are locale-independent — only copy comes from the dictionary.
-const planMeta = [
-  { price: "0 CHF", highlighted: false, badge: undefined as string | undefined },
-  { price: "4,90 CHF", highlighted: false, badge: undefined as string | undefined },
-  { price: "7,90 CHF", highlighted: true, badge: "⭐" },
-  { price: "15 CHF", highlighted: false, badge: "🔓" },
+const planMeta: Array<{
+  id: SelectablePlan;
+  price: string;
+  highlighted: boolean;
+  badge?: string;
+}> = [
+  {
+    id: "free",
+    price: "0 CHF",
+    highlighted: false,
+  },
+  {
+    id: "starter",
+    price: "4,90 CHF",
+    highlighted: false,
+  },
+  {
+    id: "creator",
+    price: "7,90 CHF",
+    highlighted: true,
+    badge: "⭐",
+  },
+  {
+    id: "unlimited",
+    price: "15 CHF",
+    highlighted: false,
+  },
 ];
 
 export default function PricingPage() {
