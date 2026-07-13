@@ -16,12 +16,16 @@
 html,
 body {
   min-height: 100%;
+  max-width: 100%;
   background: #000;
   color: var(--soft);
   /* Stop iOS/Android pinch-to-zoom and the elastic overscroll bounce that
-     exposes blank space beyond the page edges when zoomed/dragged out. */
+     exposes blank space beyond the page edges. No layout in this app relies
+     on horizontal panning, so only vertical scroll is allowed — that also
+     stops the user from ever dragging into a stray horizontal overflow. */
   overscroll-behavior: none;
-  touch-action: pan-x pan-y;
+  touch-action: pan-y;
+  overflow-x: hidden;
 }
 
 body {

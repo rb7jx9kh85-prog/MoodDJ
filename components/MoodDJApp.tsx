@@ -158,14 +158,15 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
       {/* Top bar: Mood DJ account + Spotify connection */}
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
         <AnimatedLogo size={32} withWordmark />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <LanguageSelector className="hidden sm:block" />
           <a
             href="/settings"
             aria-label="Settings"
-            className="rounded-full border border-white/10 bg-white/5 p-2.5 text-muted transition-colors hover:text-soft"
+            title="Settings"
+            className="shrink-0 rounded-full border border-white/10 bg-white/5 p-2.5 text-muted transition-colors hover:text-soft"
           >
             <Settings className="size-4" />
           </a>
@@ -174,14 +175,15 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
               {firebaseUser ? (
                 <button
                   onClick={() => signOutUser()}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
+                  title={firebaseUser.email ?? undefined}
+                  className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
                 >
-                  {firebaseUser.email} · Sign out
+                  Sign out
                 </button>
               ) : (
                 <a
                   href="/login"
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
+                  className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
                 >
                   {t.app.signIn}
                 </a>
@@ -191,14 +193,14 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
           {connected ? (
             <a
               href="/api/auth/spotify/logout"
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
+              className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
             >
               {t.app.spotifyConnected}
             </a>
           ) : (
             <button
               onClick={goToSpotifyLogin}
-              className="rounded-full border border-spotify/30 bg-spotify/10 px-4 py-2 text-xs font-medium text-spotify-bright transition-colors hover:bg-spotify/20"
+              className="shrink-0 rounded-full border border-spotify/30 bg-spotify/10 px-4 py-2 text-xs font-medium text-spotify-bright transition-colors hover:bg-spotify/20"
             >
               {t.app.connectSpotify}
             </button>
