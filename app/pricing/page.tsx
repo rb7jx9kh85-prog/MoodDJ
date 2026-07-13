@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  Check,
+  X,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
+
+import Background from "@/components/Background";
+import MarketingHeader from "@/components/marketing/MarketingHeader";
+import MarketingFooter from "@/components/marketing/MarketingFooter";
 
 import {
   completePlanOnboarding,
@@ -10,16 +20,10 @@ import {
 } from "@/lib/plan-onboarding";
 
 import { useFirebaseUser } from "@/lib/useFirebaseUser";
-import { motion } from "framer-motion";
-import { Check, X, Sparkles } from "lucide-react";
-import Background from "@/components/Background";
-import MarketingHeader from "@/components/marketing/MarketingHeader";
-import MarketingFooter from "@/components/marketing/MarketingFooter";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
-// Prices and layout flags are locale-independent — only copy comes from the dictionary.
 const planMeta: Array<{
   id: SelectablePlan;
   price: string;
@@ -50,7 +54,16 @@ const planMeta: Array<{
 ];
 
 export default function PricingPage() {
-  const { t } = useLanguage();  const router = useRouter();
+  return (
+    <Suspense fallback={<PricingLoading />}>
+      <PricingContent />
+    </Suspense>
+  );
+}
+
+function PricingContent() {
+  const { t } = useLanguage();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { user, checked } = useFirebaseUser();
 
@@ -61,6 +74,11 @@ export default function PricingPage() {
     useState<string | null>(null);
 
   const initialPrompt = searchParams.get("vibe") ?? "";
+
+  const plans = t.pricing.plans.map((plan, index) => ({
+    ...plan,
+    ...planMeta[index],
+  }));
 
   async function handleSelectPlan(planId: SelectablePlan) {
     setSelectionError(null);
@@ -89,7 +107,10 @@ export default function PricingPage() {
 
       router.replace(appTarget);
     } catch (error) {
-      console.error("[pricing] Plan selection failed", error);
+      console.error(
+        "[pricing] Plan selection failed",
+        error
+      );
 
       setSelectionError(
         error instanceof Error
@@ -100,113 +121,171 @@ export default function PricingPage() {
       setSelectingPlan(null);
     }
   }
-  const plans = t.pricing.plans.map((p, i) => ({ ...p, ...planMeta[i] }));
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen overflow-hidden">
       <Background />
-      <MarketingHeader />
 
-      <main className="relative z-10 px-6 pb-28 pt-40 sm:pt-48">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-          className="mx-auto max-w-2xl text-center"
-        >
-          <motion.div
-            variants={fadeUp}
-            className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-muted"
+      <div className="relative z-10">
+        <MarketingHeader />
+
+        <main className="mx-auto w-full max-w-7xl px-6 pb-24 pt-32 sm:px-8 lg:px-10">
+          <motion.section
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+            className="text-center"
           >
-            <Sparkles className="size-3.5 text-spotify-bright" />
-            {t.pricing.badge}
-          </motion.div>
-          <motion.h1 variants={fadeUp} className="text-4xl font-semibold sm:text-5xl">
-            {t.pricing.title} <span className="text-gradient">{t.pricing.titleHighlight}</span>
-          </motion.h1>
-          <motion.p variants={fadeUp} className="mt-4 text-muted">
-            {t.pricing.subtitle}
-          </motion.p>
-        </motion.div>
-
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-          className="mx-auto mt-16 grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {plans.map((plan) => (
             <motion.div
-              key={plan.name}
               variants={fadeUp}
-              className={cn(
-                "relative flex flex-col rounded-4xl p-8",
-                plan.highlighted
-                  ? "spotify-glow border-2 border-spotify bg-gradient-to-b from-[#0c2414] to-black"
-                  : "glass-card hover-lift"
-              )}
+              className="mx-auto inline-flex items-center gap-2 rounded-full border border-spotify/20 bg-spotify/10 px-4 py-2 text-sm font-medium text-spotify"
             >
-              {plan.badge && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-spotify px-3 py-1 text-xs font-semibold text-black">
-                  {plan.badge}
-                </span>
-              )}
-
-              <h3 className="text-lg font-semibold text-soft">{plan.name}</h3>
-              <p className="mt-1 text-sm text-muted">{plan.tagline}</p>
-
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-soft">{plan.price}</span>
-                <span className="text-sm text-muted">{plan.period}</span>
-              </div>
-
-              <ul className="mt-8 flex-1 space-y-3 text-sm">
-                {plan.features.map((f) => (
-                  <li
-                    key={f.text}
-                    className={cn(
-                      "flex items-start gap-2.5",
-                      f.included ? "text-soft/90" : "text-muted/60 line-through decoration-muted/40"
-                    )}
-                  >
-                    {f.included ? (
-                      <Check className="mt-0.5 size-4 shrink-0 text-spotify-bright" />
-                    ) : (
-                      <X className="mt-0.5 size-4 shrink-0 text-muted/50" />
-                    )}
-                    {f.text}
-                  </li>
-                ))}
-              </ul>
-
-             <button
-  type="button"
-  onClick={() => handleSelectPlan(plan.id)}
-  disabled={selectingPlan !== null || !checked}
-  className={cn(
-    "mt-8 flex h-12 items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60",
-    plan.highlighted
-      ? "bg-spotify text-black hover:bg-spotify-bright"
-      : "border border-white/15 text-soft hover:border-spotify/40"
-  )}
->
-  {selectingPlan === plan.id && (
-    <Loader2 className="size-4 animate-spin" />
-  )}
-
-  {selectingPlan === plan.id
-    ? "Enregistrement…"
-    : plan.cta}
-</button>
-              >
-                {plan.cta}
-              </Link>
+              <Sparkles className="size-4" />
+              <span>{t.pricing.badge}</span>
             </motion.div>
-          ))}
-        </motion.div>
-      </main>
 
-      <MarketingFooter />
+            <motion.h1
+              variants={fadeUp}
+              className="mx-auto mt-6 max-w-4xl text-4xl font-bold tracking-tight text-soft sm:text-5xl lg:text-6xl"
+            >
+              {t.pricing.title}{" "}
+              <span className="text-spotify">
+                {t.pricing.titleHighlight}
+              </span>
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted sm:text-lg"
+            >
+              {t.pricing.subtitle}
+            </motion.p>
+          </motion.section>
+
+          {selectionError && (
+            <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-center text-sm text-red-300">
+              {selectionError}
+            </div>
+          )}
+
+          <motion.section
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+            className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-4"
+          >
+            {plans.map((plan) => (
+              <motion.article
+                key={plan.id}
+                variants={fadeUp}
+                className={cn(
+                  "relative flex h-full flex-col rounded-4xl border p-7 backdrop-blur-xl",
+                  plan.highlighted
+                    ? "border-spotify/50 bg-spotify/10 shadow-[0_0_60px_rgba(29,185,84,0.12)]"
+                    : "border-white/10 bg-white/5"
+                )}
+              >
+                {plan.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-spotify px-4 py-1.5 text-xs font-bold text-black shadow-lg">
+                    {plan.badge}
+                  </div>
+                )}
+
+                <div>
+                  <h2 className="text-xl font-semibold text-soft">
+                    {plan.name}
+                  </h2>
+
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-muted">
+                    {plan.tagline}
+                  </p>
+                </div>
+
+                <div className="mt-7">
+                  <div className="flex items-end gap-2">
+                    <span className="text-4xl font-bold tracking-tight text-soft">
+                      {plan.price}
+                    </span>
+
+                    <span className="pb-1 text-sm text-muted">
+                      {plan.period}
+                    </span>
+                  </div>
+                </div>
+
+                <ul className="mt-8 flex-1 space-y-4">
+                  {plan.features.map((feature) => (
+                    <li
+                      key={feature.text}
+                      className="flex items-start gap-3 text-sm"
+                    >
+                      {feature.included ? (
+                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-spotify/15 text-spotify">
+                          <Check className="size-3.5" />
+                        </span>
+                      ) : (
+                        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-white/5 text-muted">
+                          <X className="size-3.5" />
+                        </span>
+                      )}
+
+                      <span
+                        className={
+                          feature.included
+                            ? "text-soft"
+                            : "text-muted"
+                        }
+                      >
+                        {feature.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleSelectPlan(plan.id);
+                  }}
+                  disabled={
+                    selectingPlan !== null || !checked
+                  }
+                  className={cn(
+                    "mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60",
+                    plan.highlighted
+                      ? "bg-spotify text-black hover:bg-spotify-bright"
+                      : "border border-white/15 bg-white/5 text-soft hover:border-spotify/40 hover:bg-white/10"
+                  )}
+                >
+                  {selectingPlan === plan.id && (
+                    <Loader2 className="size-4 animate-spin" />
+                  )}
+
+                  {selectingPlan === plan.id
+                    ? "Enregistrement…"
+                    : plan.cta}
+                </button>
+              </motion.article>
+            ))}
+          </motion.section>
+        </main>
+
+        <MarketingFooter />
+      </div>
     </div>
+  );
+}
+
+function PricingLoading() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-black text-white">
+      <div className="text-center">
+        <Loader2 className="mx-auto size-9 animate-spin text-spotify" />
+
+        <p className="mt-4 text-sm text-white/60">
+          Chargement des offres…
+        </p>
+      </div>
+    </main>
   );
 }
