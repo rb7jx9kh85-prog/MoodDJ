@@ -2,21 +2,64 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each user can only read/write their own profile document.
-    // Document ID is the Firebase Auth uid (see lib/firebase-auth.ts).
-    match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
 
-      // Creation only via the client right after sign-up/sign-in, and only
-      // for the caller's own uid, with a locked-down shape so nobody can
-      // grant themselves a paid plan by writing an arbitrary document.
-      allow create: if request.auth != null
-        && request.auth.uid == userId
+    match /users/{userId} {
+
+      function isOwner() {
+        return request.auth != null
+          && request.auth.uid == userId;
+      }
+
+      function hasAllowedFields() {
+        return request.resource.data.keys().hasOnly([
+          "uid",
+          "email",
+          "displayName",
+          "photoURL",
+          "plan",
+          "selectedPlan",
+          "onboardingCompleted",
+          "onboardingCompletedAt",
+          "createdAt"
+        ]);
+      }
+
+      function hasValidSelectedPlan() {
+        return request.resource.data.selectedPlan == "free"
+          || request.resource.data.selectedPlan == "starter"
+          || request.resource.data.selectedPlan == "creator"
+          || request.resource.data.selectedPlan == "unlimited";
+      }
+
+      allow read: if isOwner();
+
+      allow create: if isOwner()
         && request.resource.data.uid == userId
-        && request.resource.data.plan == "free";
+        && request.resource.data.plan == "free"
+        && request.resource.data.selectedPlan == null
+        && request.resource.data.onboardingCompleted == false
+        && hasAllowedFields();
+
+      allow update: if isOwner()
+
+        // Interdiction de modifier l’identité du document.
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.createdAt == resource.data.createdAt
+
+        // Le navigateur ne peut pas activer lui-même un abonnement payant.
+        && request.resource.data.plan == resource.data.plan
+
+        // Le choix de plan doit être valide.
+        && hasValidSelectedPlan()
+
+        // Le choix du plan termine l’onboarding.
+        && request.resource.data.onboardingCompleted == true
+
+        && hasAllowedFields();
+
+      allow delete: if isOwner();
     }
 
-    // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;
     }
