@@ -18,6 +18,10 @@ body {
   min-height: 100%;
   background: #000;
   color: var(--soft);
+  /* Stop iOS/Android pinch-to-zoom and the elastic overscroll bounce that
+     exposes blank space beyond the page edges when zoomed/dragged out. */
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
 }
 
 body {
