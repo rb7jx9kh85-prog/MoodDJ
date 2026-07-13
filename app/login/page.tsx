@@ -19,6 +19,7 @@ import {
   withAuthTimeout,
 } from "@/lib/firebase-auth";
 
+import { getCurrentUserPlan } from "@/lib/plan-onboarding";
 import { fadeUp } from "@/lib/animations";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
@@ -45,12 +46,25 @@ function LoginForm() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function goToPlanSelection() {
-    const target = initialPrompt
-      ? `/pricing?vibe=${encodeURIComponent(initialPrompt)}`
-      : "/pricing";
+  /**
+   * Where to send the user right after they authenticate. A returning user
+   * who already picked (and activated, via the fake checkout) a plan must
+   * never be sent back to /pricing — only someone who hasn't finished
+   * onboarding yet should land there.
+   */
+  async function goAfterAuth() {
+    const appTarget = initialPrompt ? `/app?vibe=${encodeURIComponent(initialPrompt)}` : "/app";
+    const pricingTarget = initialPrompt ? `/pricing?vibe=${encodeURIComponent(initialPrompt)}` : "/pricing";
 
-    router.replace(target);
+    try {
+      const profile = await getCurrentUserPlan();
+      router.replace(profile?.onboardingCompleted ? appTarget : pricingTarget);
+    } catch (profileError) {
+      console.error("[login] Could not read plan profile", profileError);
+      // Fail toward /pricing rather than silently dropping a paying user
+      // into the app with an unverified state.
+      router.replace(pricingTarget);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -70,7 +84,7 @@ function LoginForm() {
         );
       }
 
-      goToPlanSelection();
+      await goAfterAuth();
     } catch (authError) {
       console.error("[login] email auth failed", authError);
       setError(friendlyAuthError(authError));
@@ -85,7 +99,7 @@ function LoginForm() {
 
     try {
       await withAuthTimeout(signInWithGoogle());
-      goToPlanSelection();
+      await goAfterAuth();
     } catch (authError) {
       console.error("[login] google auth failed", authError);
       setError(friendlyAuthError(authError));
@@ -100,7 +114,7 @@ function LoginForm() {
 
     try {
       await withAuthTimeout(signInWithApple());
-      goToPlanSelection();
+      await goAfterAuth();
     } catch (authError) {
       console.error("[login] apple auth failed", authError);
       setError(friendlyAuthError(authError));
