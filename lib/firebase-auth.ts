@@ -23,14 +23,23 @@ export async function ensureUserProfile(user: User): Promise<void> {
   if (snap.exists()) return;
 
   await setDoc(ref, {
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName ?? null,
-    photoURL: user.photoURL ?? null,
-    plan: "free",
-    createdAt: serverTimestamp(),
-  });
-}
+  uid: user.uid,
+  email: user.email,
+  displayName: user.displayName ?? null,
+  photoURL: user.photoURL ?? null,
+
+  // Le vrai plan actif de l’utilisateur.
+  // Il reste "free" tant qu’un paiement Stripe n’a pas été confirmé.
+  plan: "free",
+
+  // Plan sélectionné pendant l’onboarding.
+  selectedPlan: null,
+
+  // Empêche l’accès à /app avant le choix d’un plan.
+  onboardingCompleted: false,
+
+  createdAt: serverTimestamp(),
+});
 
 export async function signUpWithEmail(
   email: string,
