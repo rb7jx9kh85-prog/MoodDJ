@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -16,7 +11,9 @@ interface PlanGateProps {
   children: ReactNode;
 }
 
-export default function PlanGate({ children }: PlanGateProps) {
+export default function PlanGate({
+  children,
+}: PlanGateProps) {
   const router = useRouter();
   const { user, checked } = useFirebaseUser();
 
@@ -33,11 +30,23 @@ export default function PlanGate({ children }: PlanGateProps) {
       return;
     }
 
+    /*
+     * On copie l’UID dans une constante.
+     * TypeScript sait alors qu’il s’agit forcément d’une string,
+     * même à l’intérieur de la fonction asynchrone.
+     */
+    const userId = user.uid;
+
     let cancelled = false;
 
     async function verifyPlanSelection() {
       try {
-        const userRef = doc(getFirebaseDb(), "users", user.uid);
+        const userRef = doc(
+          getFirebaseDb(),
+          "users",
+          userId
+        );
+
         const snapshot = await getDoc(userRef);
 
         if (cancelled) {
@@ -50,6 +59,7 @@ export default function PlanGate({ children }: PlanGateProps) {
         }
 
         const profile = snapshot.data();
+
         const onboardingCompleted =
           profile.onboardingCompleted === true;
 
@@ -65,8 +75,9 @@ export default function PlanGate({ children }: PlanGateProps) {
           error
         );
 
-        // En cas d’erreur, on refuse l’accès plutôt que de laisser passer.
-        router.replace("/pricing");
+        if (!cancelled) {
+          router.replace("/pricing");
+        }
       } finally {
         if (!cancelled) {
           setProfileChecked(true);
