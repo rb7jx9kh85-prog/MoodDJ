@@ -10,8 +10,10 @@ service cloud.firestore {
           && request.auth.uid == userId;
       }
 
-      function hasAllowedFields() {
-        return request.resource.data.keys().hasOnly([
+      allow read: if isOwner();
+
+      allow create: if isOwner()
+        && request.resource.data.keys().hasAll([
           "uid",
           "email",
           "displayName",
@@ -19,43 +21,42 @@ service cloud.firestore {
           "plan",
           "selectedPlan",
           "onboardingCompleted",
-          "onboardingCompletedAt",
           "createdAt"
-        ]);
-      }
-
-      function hasValidSelectedPlan() {
-        return request.resource.data.selectedPlan == "free"
-          || request.resource.data.selectedPlan == "starter"
-          || request.resource.data.selectedPlan == "creator"
-          || request.resource.data.selectedPlan == "unlimited";
-      }
-
-      allow read: if isOwner();
-
-      allow create: if isOwner()
+        ])
+        && request.resource.data.keys().hasOnly([
+          "uid",
+          "email",
+          "displayName",
+          "photoURL",
+          "plan",
+          "selectedPlan",
+          "onboardingCompleted",
+          "createdAt"
+        ])
         && request.resource.data.uid == userId
         && request.resource.data.plan == "free"
         && request.resource.data.selectedPlan == null
-        && request.resource.data.onboardingCompleted == false
-        && hasAllowedFields();
+        && request.resource.data.onboardingCompleted == false;
 
       allow update: if isOwner()
-
-        // Interdiction de modifier l’identité du document.
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.createdAt == resource.data.createdAt
-
-        // Le navigateur ne peut pas activer lui-même un abonnement payant.
-        && request.resource.data.plan == resource.data.plan
-
-        // Le choix de plan doit être valide.
-        && hasValidSelectedPlan()
-
-        // Le choix du plan termine l’onboarding.
-        && request.resource.data.onboardingCompleted == true
-
-        && hasAllowedFields();
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            "email",
+            "displayName",
+            "photoURL",
+            "selectedPlan",
+            "onboardingCompleted",
+            "onboardingCompletedAt"
+          ])
+        && (
+          request.resource.data.selectedPlan == "free"
+          || request.resource.data.selectedPlan == "starter"
+          || request.resource.data.selectedPlan == "creator"
+          || request.resource.data.selectedPlan == "unlimited"
+        )
+        && request.resource.data.onboardingCompleted == true;
 
       allow delete: if isOwner();
     }
