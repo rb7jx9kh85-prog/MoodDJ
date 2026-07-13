@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { Play, Music2 } from "lucide-react";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import TiltCard from "@/components/marketing/TiltCard";
+import EqualizerBars from "@/components/marketing/EqualizerBars";
 
 const mockTracks = [
   { title: "Golden Hour", artist: "Kacey Musgraves", duration: "3:28" },
@@ -42,15 +44,17 @@ export default function PreviewShowcase() {
           </ul>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="glass-card hover-lift rounded-4xl p-6">
+        <motion.div variants={fadeUp}>
+          <TiltCard className="glass-card rounded-4xl p-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-4">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-spotify to-spotify-bright text-black">
               <Music2 className="size-5" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-semibold text-soft">{t.preview.playlistTitle}</p>
               <p className="text-xs text-muted">{t.preview.playlistMeta}</p>
             </div>
+            <EqualizerBars bars={5} className="h-6 w-8" barClassName="w-[3px]" />
           </div>
 
           <div className="mt-4 space-y-1">
@@ -75,6 +79,7 @@ export default function PreviewShowcase() {
             <Play className="size-4 fill-black" />
             {t.preview.ctaListen}
           </button>
+          </TiltCard>
         </motion.div>
       </motion.div>
     </section>

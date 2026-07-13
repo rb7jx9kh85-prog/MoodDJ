@@ -18,14 +18,7 @@ export default function FinalCta() {
         variants={fadeUp}
         className="spotify-glow relative mx-auto max-w-4xl overflow-hidden rounded-4xl border border-spotify/20 bg-gradient-to-br from-[#0a1f10] via-[#050505] to-black px-8 py-16 text-center"
       >
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-40"
-          style={{
-            background:
-              "radial-gradient(circle at 20% 20%, rgba(30,215,96,0.25), transparent 45%), radial-gradient(circle at 80% 80%, rgba(29,185,84,0.18), transparent 45%)",
-          }}
-        />
+        <div aria-hidden className="aurora absolute inset-0 opacity-50" />
         <div className="relative z-10">
           <h2 className="text-3xl font-semibold sm:text-4xl">
             {t.cta.title} <span className="text-gradient">{t.cta.titleHighlight}</span>

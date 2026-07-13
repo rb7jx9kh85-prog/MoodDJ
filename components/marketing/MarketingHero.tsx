@@ -2,12 +2,49 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform, type Variants } from "framer-motion";
 import { SendHorizonal, Sparkles } from "lucide-react";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import ParticleField from "@/components/marketing/ParticleField";
 import Magnetic from "@/components/marketing/Magnetic";
+import EqualizerBars from "@/components/marketing/EqualizerBars";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+
+const wordVariant: Variants = {
+  hidden: { opacity: 0, y: 28, rotateX: 55, filter: "blur(8px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    rotateX: 0,
+    filter: "blur(0px)",
+    transition: { type: "spring", bounce: 0.35, duration: 0.9 },
+  },
+};
+
+function StaggerWords({ text, gradient = false }: { text: string; gradient?: boolean }) {
+  return (
+    <>
+      {text.split(" ").map((word, i) => (
+        <motion.span
+          key={`${word}-${i}`}
+          variants={wordVariant}
+          className={`inline-block will-change-transform ${gradient ? "text-gradient" : ""}`}
+        >
+          {word}
+          {" "}
+        </motion.span>
+      ))}
+    </>
+  );
+}
+
+const NOTES = [
+  { symbol: "♪", left: "8%", top: "70%", delay: "0s", size: "1.4rem" },
+  { symbol: "♫", left: "16%", top: "48%", delay: "2.2s", size: "1.1rem" },
+  { symbol: "♬", left: "84%", top: "62%", delay: "1.1s", size: "1.5rem" },
+  { symbol: "♪", left: "91%", top: "42%", delay: "3.4s", size: "1rem" },
+  { symbol: "♩", left: "74%", top: "78%", delay: "4.6s", size: "1.2rem" },
+];
 
 export default function MarketingHero() {
   const { t } = useLanguage();
@@ -37,6 +74,30 @@ export default function MarketingHero() {
     <section className="relative overflow-hidden px-6 pb-24 pt-40 sm:pt-48">
       <ParticleField />
 
+      {/* Giant translucent equalizer glowing behind the headline */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-24 flex h-72 items-end justify-center opacity-[0.16] sm:top-28"
+        style={{
+          maskImage: "radial-gradient(ellipse 60% 90% at 50% 100%, #000 30%, transparent 75%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 90% at 50% 100%, #000 30%, transparent 75%)",
+        }}
+      >
+        <EqualizerBars bars={48} className="h-full w-full max-w-3xl" barClassName="w-2" />
+      </div>
+
+      {/* Drifting music notes */}
+      {NOTES.map((n, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className="floating-note text-spotify-bright/60"
+          style={{ left: n.left, top: n.top, animationDelay: n.delay, fontSize: n.size }}
+        >
+          {n.symbol}
+        </span>
+      ))}
+
       <motion.div
         style={{ y: titleY, opacity: titleOpacity }}
         initial="hidden"
@@ -53,12 +114,13 @@ export default function MarketingHero() {
         </motion.div>
 
         <motion.h1
-          variants={fadeUp}
-          className="text-balance text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.15 } } }}
+          className="text-balance text-4xl font-semibold leading-tight [perspective:900px] sm:text-5xl md:text-6xl"
         >
-          {t.hero.titleLine1} <span className="text-gradient">{t.hero.titleHighlight}</span>.
+          <StaggerWords text={t.hero.titleLine1} />
+          <StaggerWords text={t.hero.titleHighlight + "."} gradient />
           <br />
-          {t.hero.titleLine2}
+          <StaggerWords text={t.hero.titleLine2} />
         </motion.h1>
 
         <motion.p

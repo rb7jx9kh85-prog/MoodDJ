@@ -2,6 +2,7 @@ import Background from "@/components/Background";
 import CursorGlow from "@/components/marketing/CursorGlow";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingHero from "@/components/marketing/MarketingHero";
+import MoodMarquee from "@/components/marketing/MoodMarquee";
 import Benefits from "@/components/marketing/Benefits";
 import PreviewShowcase from "@/components/marketing/PreviewShowcase";
 import Testimonials from "@/components/marketing/Testimonials";
@@ -16,6 +17,7 @@ export default function LandingPage() {
       <MarketingHeader />
       <main className="relative z-10">
         <MarketingHero />
+        <MoodMarquee />
         <Benefits />
         <PreviewShowcase />
         <Testimonials />
