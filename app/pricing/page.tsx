@@ -50,7 +50,56 @@ const planMeta: Array<{
 ];
 
 export default function PricingPage() {
-  const { t } = useLanguage();
+  const { t } = useLanguage();  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, checked } = useFirebaseUser();
+
+  const [selectingPlan, setSelectingPlan] =
+    useState<SelectablePlan | null>(null);
+
+  const [selectionError, setSelectionError] =
+    useState<string | null>(null);
+
+  const initialPrompt = searchParams.get("vibe") ?? "";
+
+  async function handleSelectPlan(planId: SelectablePlan) {
+    setSelectionError(null);
+
+    if (!checked) {
+      return;
+    }
+
+    if (!user) {
+      const loginTarget = initialPrompt
+        ? `/login?vibe=${encodeURIComponent(initialPrompt)}`
+        : "/login";
+
+      router.replace(loginTarget);
+      return;
+    }
+
+    setSelectingPlan(planId);
+
+    try {
+      await completePlanOnboarding(planId);
+
+      const appTarget = initialPrompt
+        ? `/app?vibe=${encodeURIComponent(initialPrompt)}`
+        : "/app";
+
+      router.replace(appTarget);
+    } catch (error) {
+      console.error("[pricing] Plan selection failed", error);
+
+      setSelectionError(
+        error instanceof Error
+          ? error.message
+          : "Impossible d’enregistrer ton choix."
+      );
+    } finally {
+      setSelectingPlan(null);
+    }
+  }
   const plans = t.pricing.plans.map((p, i) => ({ ...p, ...planMeta[i] }));
 
   return (
