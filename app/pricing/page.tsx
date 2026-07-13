@@ -179,14 +179,25 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              <Link
-                href="/login"
-                className={cn(
-                  "mt-8 flex h-12 items-center justify-center rounded-2xl text-sm font-semibold transition-transform hover:scale-[1.02]",
-                  plan.highlighted
-                    ? "bg-spotify text-black hover:bg-spotify-bright"
-                    : "border border-white/15 text-soft hover:border-spotify/40"
-                )}
+             <button
+  type="button"
+  onClick={() => handleSelectPlan(plan.id)}
+  disabled={selectingPlan !== null || !checked}
+  className={cn(
+    "mt-8 flex h-12 items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60",
+    plan.highlighted
+      ? "bg-spotify text-black hover:bg-spotify-bright"
+      : "border border-white/15 text-soft hover:border-spotify/40"
+  )}
+>
+  {selectingPlan === plan.id && (
+    <Loader2 className="size-4 animate-spin" />
+  )}
+
+  {selectingPlan === plan.id
+    ? "Enregistrement…"
+    : plan.cta}
+</button>
               >
                 {plan.cta}
               </Link>
