@@ -47,7 +47,9 @@ npm install
 ### 2. Configure OpenAI
 
 Create an API key at <https://platform.openai.com/api-keys>. The model is set in
-`lib/openai.ts` (`OPENAI_MODEL`, default `gpt-4o-mini`) — change it there.
+`lib/openai.ts` (`OPENAI_MODEL`, default `gpt-5.6-luna`) — change it there. Generation
+uses the Responses API with a strict JSON schema and `reasoning: { effort: "low" }`;
+note that GPT-5's reasoning-model family (including 5.6) rejects `temperature`.
 
 ### 3. Create a Spotify Developer app
 
@@ -169,7 +171,7 @@ scripts/                # icon-source.svg + generate-icons.mjs
 - Spotify tokens are stored in `httpOnly`, `secure` (in production), `sameSite`
   cookies — never exposed to client JS.
 - The OAuth `state` is random and verified via an HMAC-signed cookie.
-- User prompts are sanitised and length-limited (≤ 500 chars).
+- User prompts are sanitised and length-limited (≤ 2000 chars).
 - Tokens are never logged.
 
 ---
