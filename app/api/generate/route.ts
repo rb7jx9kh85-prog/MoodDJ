@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { GeneratedPlaylistResponse, Track, ApiErrorCode } from "@/types";
 import { getValidAccessToken } from "@/lib/auth";
 import {
-  getSpotifyMe,
   searchTracks,
   createPlaylist,
   addTracksToPlaylist,
@@ -163,9 +162,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Create the playlist on the user's account and add the tracks.
-    const me = await withFreshToken(userAccessToken, (t) => getSpotifyMe(t));
     const playlist = await withFreshToken(userAccessToken, (t) =>
-      createPlaylist(t, me.id, plan.playlistName, plan.playlistDescription)
+      createPlaylist(t, plan.playlistName, plan.playlistDescription)
     );
 
     try {

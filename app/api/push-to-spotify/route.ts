@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { PushToSpotifyResponse } from "@/types";
 import { getValidAccessToken } from "@/lib/auth";
 import {
-  getSpotifyMe,
   createPlaylist,
   addTracksToPlaylist,
   replacePlaylistTracks,
@@ -99,9 +98,8 @@ export async function POST(req: NextRequest) {
       playlistId = targetPlaylistId;
       playlistUrl = `https://open.spotify.com/playlist/${targetPlaylistId}`;
     } else {
-      const me = await withFreshToken(accessToken, (t) => getSpotifyMe(t));
       const playlist = await withFreshToken(accessToken, (t) =>
-        createPlaylist(t, me.id, name, description)
+        createPlaylist(t, name, description)
       );
       try {
         await withFreshToken(accessToken, (t) => addTracksToPlaylist(t, playlist.id, validUris));
