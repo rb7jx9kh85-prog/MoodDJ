@@ -79,6 +79,8 @@ export async function spotifyFailureResponse(
       uid: uidTag,
       status: err.status,
       spotifyMessage: err.spotifyMessage ?? "(no body)",
+      spotifyReason: err.spotifyReason ?? null,
+      wwwAuthenticate: err.wwwAuthenticate ?? null,
       retryAfter: err.retryAfter,
     });
 

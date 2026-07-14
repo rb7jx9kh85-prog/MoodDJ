@@ -28,7 +28,10 @@ export default function PlaylistResult({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ownedPlaylists, setOwnedPlaylists] = useState<OwnedPlaylist[] | null>(null);
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
-  const [playlistsError, setPlaylistsError] = useState<string | null>(null);
+  const [playlistsError, setPlaylistsError] = useState<{
+    message: string;
+    reconnectRequired: boolean;
+  } | null>(null);
   const [target, setTarget] = useState<"new" | string>("new");
 
   const copyLink = async () => {
@@ -55,10 +58,19 @@ export default function PlaylistResult({
       } else {
         // An API failure must stay visible — never masquerade as "no playlists".
         const data = (await res.json().catch(() => ({}))) as ApiError;
-        setPlaylistsError(data.error || "Could not load your Spotify playlists.");
+        setPlaylistsError({
+          message:
+            data.reconnectRequired
+              ? "Your Spotify connection has expired. Reconnect Spotify to continue."
+              : data.error || "Could not load your Spotify playlists. Please try again.",
+          reconnectRequired: Boolean(data.reconnectRequired),
+        });
       }
     } catch {
-      setPlaylistsError("Network error while loading your playlists.");
+      setPlaylistsError({
+        message: "Could not load your Spotify playlists. Please try again.",
+        reconnectRequired: false,
+      });
     } finally {
       setLoadingPlaylists(false);
     }
@@ -206,16 +218,20 @@ export default function PlaylistResult({
 
             {!loadingPlaylists && playlistsError && (
               <div className="mx-2 my-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2">
-                <p className="text-xs text-rose-300">{playlistsError}</p>
+                <p className="text-xs text-rose-300">{playlistsError.message}</p>
                 <button
                   type="button"
                   onClick={() => {
+                    if (playlistsError.reconnectRequired) {
+                      onConnect();
+                      return;
+                    }
                     setOwnedPlaylists(null);
                     void openPicker();
                   }}
                   className="mt-1.5 text-xs font-medium text-soft underline underline-offset-2"
                 >
-                  Retry
+                  {playlistsError.reconnectRequired ? "Reconnect Spotify" : "Retry"}
                 </button>
               </div>
             )}
