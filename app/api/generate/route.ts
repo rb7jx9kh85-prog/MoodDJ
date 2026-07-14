@@ -6,16 +6,13 @@ import {
   createPlaylist,
   addTracksToPlaylist,
   getAppAccessToken,
+  applyHardFilters,
+  curateTracks,
+  orderByProgression,
 } from "@/lib/spotify";
 import { withFreshToken, spotifyFailureResponse } from "@/lib/spotify-session";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
-import {
-  sanitizePrompt,
-  sanitizeGenerationOptions,
-  dedupeByUri,
-  shuffle,
-  MAX_PROMPT_LENGTH,
-} from "@/lib/utils";
+import { sanitizePrompt, sanitizeGenerationOptions, MAX_PROMPT_LENGTH } from "@/lib/utils";
 import { getUidFromRequest, getUserQuota, canGenerate, canPushToSpotify, recordGeneration } from "@/lib/quota";
 
 // firebase-admin (via lib/quota) needs Node APIs, not the Edge runtime.
@@ -124,24 +121,49 @@ export async function POST(req: NextRequest) {
       return searchTracks(await getAppAccessToken(), query, limit);
     };
 
-    // Fetch more per query for longer playlists so dedupe still leaves
-    // enough unique tracks to hit the requested count.
+    // Fetch more per query for longer playlists so filtering/dedup still
+    // leaves enough unique tracks to hit the requested count.
     const perQuery = options.trackCount >= 20 ? 12 : 8;
-    const collected: Track[] = [];
     const results = await Promise.all(
       plan.searchQueries.map((q) => searchWith(q, perQuery).catch(() => [] as Track[]))
     );
-    for (const list of results) collected.push(...list);
 
-    const unique = dedupeByUri(collected);
-    if (unique.length === 0) {
+    // Dedupe by URI while remembering each track's best (lowest) rank within
+    // its own query's results — Spotify already ranks search hits by
+    // relevance, so this is real signal for curateTracks' scoring below.
+    const candidateMap = new Map<string, { track: Track; queryRank: number }>();
+    for (const list of results) {
+      list.forEach((track, rank) => {
+        if (!track.uri) return;
+        const existing = candidateMap.get(track.uri);
+        if (!existing || rank < existing.queryRank) {
+          candidateMap.set(track.uri, { track, queryRank: rank });
+        }
+      });
+    }
+
+    // Deterministic technical filters (explicit/remix/live/cover toggles,
+    // excluded artists) — never phrased as instructions to the model.
+    const candidates = Array.from(candidateMap.values());
+    const allowedUris = new Set(
+      applyHardFilters(
+        candidates.map((c) => c.track),
+        options
+      ).map((t) => t.uri)
+    );
+    const filteredCandidates = candidates.filter((c) => allowedUris.has(c.track.uri));
+
+    if (filteredCandidates.length === 0) {
       return errorResponse("No tracks found for this mood. Try a different vibe.", "no_tracks", 422);
     }
 
-    // 5. Select exactly the requested number of tracks (lightly shuffled),
-    // or as many as the searches produced if that's fewer.
-    const target = Math.min(plan.trackCount || options.trackCount, 30);
-    const selected = shuffle(unique).slice(0, Math.min(target, unique.length));
+    // 5. trackCount is deterministic: the backend guarantees this exact
+    // count (or as many as the searches produced, if fewer), never the
+    // model's own suggestion. Score, cap per-artist repeats for diversity,
+    // then order the final set per the requested progression.
+    const target = Math.min(options.trackCount, filteredCandidates.length);
+    const curated = curateTracks(filteredCandidates, options, target);
+    const selected = orderByProgression(curated, options.progression);
 
     const base = {
       playlistName: plan.playlistName,

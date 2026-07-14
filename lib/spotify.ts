@@ -1,4 +1,4 @@
-import type { Track } from "@/types";
+import type { GenerationOptions, PlaylistProgression, Track } from "@/types";
 
 const SPOTIFY_API = "https://api.spotify.com/v1";
 const SPOTIFY_ACCOUNTS = "https://accounts.spotify.com/api/token";
@@ -128,8 +128,11 @@ type SpotifyTrackItem = {
   name: string;
   uri: string;
   external_urls: { spotify: string };
-  artists: Array<{ name: string }>;
+  artists: Array<{ id: string; name: string }>;
   album?: { name: string; images?: Array<{ url: string }> };
+  /** Still exposed on the basic track object — unlike audio-features, this survived the Feb 2026 API changes. */
+  popularity?: number;
+  explicit?: boolean;
 };
 
 function normalizeTrack(t: SpotifyTrackItem): Track {
@@ -137,10 +140,13 @@ function normalizeTrack(t: SpotifyTrackItem): Track {
     id: t.id,
     name: t.name,
     artist: t.artists.map((a) => a.name).join(", "),
+    artistIds: t.artists.map((a) => a.id).filter(Boolean),
     album: t.album?.name,
     image: t.album?.images?.[0]?.url,
     spotifyUrl: t.external_urls.spotify,
     uri: t.uri,
+    popularity: typeof t.popularity === "number" ? t.popularity : undefined,
+    explicit: typeof t.explicit === "boolean" ? t.explicit : undefined,
   };
 }
 
@@ -285,6 +291,141 @@ export async function replacePlaylistTracks(
     if (!appendRes.ok) {
       throw await toApiError(appendRes, "Could not update playlist");
     }
+  }
+}
+
+const LIVE_PATTERN = /\(live[^)]*\)|\blive at\b|\blive from\b|\blive in\b/i;
+const REMIX_PATTERN = /\bremix\b|\bre-?edit\b|\bmashup\b/i;
+const COVER_PATTERN = /\bcover\b|tribute to|as made famous by|karaoke/i;
+
+/**
+ * Hard, deterministic filters derived from the user's technical toggles
+ * (explicit/remix/live/cover, excluded artists). These are never phrased as
+ * instructions to the model — they're applied here, after the fact, on real
+ * track metadata.
+ */
+export function applyHardFilters(
+  candidates: Track[],
+  options: Pick<
+    GenerationOptions,
+    "includeExplicit" | "allowRemixes" | "allowLiveVersions" | "allowCovers" | "excludedArtists"
+  >
+): Track[] {
+  const excludedArtists = options.excludedArtists.map((a) => a.toLowerCase());
+  return candidates.filter((t) => {
+    if (!options.includeExplicit && t.explicit) return false;
+    if (!options.allowRemixes && REMIX_PATTERN.test(t.name)) return false;
+    if (!options.allowLiveVersions && LIVE_PATTERN.test(t.name)) return false;
+    if (!options.allowCovers && COVER_PATTERN.test(t.name)) return false;
+    if (excludedArtists.length > 0) {
+      const artistLower = t.artist.toLowerCase();
+      if (excludedArtists.some((a) => artistLower.includes(a))) return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Score + greedily select up to `targetCount` tracks from deduped, filtered
+ * candidates, favoring: Spotify's own relevance ranking (position within its
+ * source query's results), popularity alignment with the user's preference,
+ * and artist diversity (capped repeats per artist). This intentionally does
+ * NOT use audio-features data (energy, danceability, BPM, ...) — Spotify
+ * deprecated those endpoints for Development Mode apps in February 2026, so
+ * there is no reliable per-track measurement of them to score against.
+ */
+export function curateTracks(
+  candidates: Array<{ track: Track; queryRank: number }>,
+  options: Pick<GenerationOptions, "popularity">,
+  targetCount: number
+): Track[] {
+  const maxPerArtist = Math.max(2, Math.ceil(targetCount / 6));
+  const artistCounts = new Map<string, number>();
+  const artistKey = (t: Track) => t.artistIds?.[0] ?? t.artist;
+
+  const scored = candidates.map((c) => {
+    let score = Math.max(0, 10 - c.queryRank);
+    const pop = c.track.popularity ?? 50;
+    if (options.popularity === "mainstream") score += pop / 10;
+    else if (options.popularity === "underground") score += (100 - pop) / 8;
+    else if (options.popularity === "niche") score += (100 - pop) / 15;
+    return { ...c, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  const selected: Track[] = [];
+  for (const c of scored) {
+    if (selected.length >= targetCount) break;
+    const key = artistKey(c.track);
+    const count = artistCounts.get(key) ?? 0;
+    if (count >= maxPerArtist) continue;
+    selected.push(c.track);
+    artistCounts.set(key, count + 1);
+  }
+
+  // If the diversity cap left us short (e.g. very few unique artists in the
+  // candidate pool), top up from the remaining scored tracks regardless of
+  // the cap rather than under-deliver on the requested count.
+  if (selected.length < targetCount) {
+    const selectedUris = new Set(selected.map((t) => t.uri));
+    for (const c of scored) {
+      if (selected.length >= targetCount) break;
+      if (selectedUris.has(c.track.uri)) continue;
+      selected.push(c.track);
+      selectedUris.add(c.track.uri);
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * Reorder the final track selection to match the requested playlist
+ * progression. Uses Spotify's `popularity` field as the only reliable
+ * per-track numeric signal available (real energy/audio-features data isn't
+ * exposed to Development Mode apps anymore) — a heuristic proxy, not a
+ * measurement of actual musical energy.
+ */
+export function orderByProgression(tracks: Track[], progression: PlaylistProgression): Track[] {
+  if (tracks.length <= 2 || progression === "stable") return tracks;
+
+  const byPopularityAsc = [...tracks].sort(
+    (a, b) => (a.popularity ?? 50) - (b.popularity ?? 50)
+  );
+  const byPopularityDesc = [...byPopularityAsc].reverse();
+
+  switch (progression) {
+    case "gradual-rise":
+    case "slow-burn":
+      return byPopularityAsc;
+    case "gradual-fall":
+      return byPopularityDesc;
+    case "peak-and-release":
+    case "cinematic-journey": {
+      // Build up then release: ascending into the middle, descending after.
+      const mid = Math.ceil(byPopularityAsc.length / 2);
+      const rising = byPopularityAsc.slice(0, mid);
+      const falling = byPopularityDesc.slice(byPopularityDesc.length - (tracks.length - mid));
+      return [...rising, ...falling];
+    }
+    case "wave": {
+      // Interleave low/high popularity for a rise-fall-rise feel.
+      const out: Track[] = [];
+      let lo = 0;
+      let hi = byPopularityAsc.length - 1;
+      let takeLow = true;
+      while (lo <= hi) {
+        if (takeLow) {
+          out.push(byPopularityAsc[lo++]);
+        } else {
+          out.push(byPopularityAsc[hi--]);
+        }
+        takeLow = !takeLow;
+      }
+      return out;
+    }
+    default:
+      return tracks;
   }
 }
 

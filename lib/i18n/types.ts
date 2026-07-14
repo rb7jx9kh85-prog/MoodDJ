@@ -113,6 +113,85 @@ export type Dictionary = {
       energy: string;
       chill: string;
       intense: string;
+      advanced: string;
+      reset: string;
+      ambiance: {
+        title: string;
+        danceability: string;
+        emotionalIntensity: string;
+        darkness: string;
+        sensuality: string;
+        positivity: string;
+      };
+      style: {
+        title: string;
+        preferredGenres: string;
+        excludedGenres: string;
+        genrePlaceholder: string;
+        era: string;
+        eraAny: string;
+        eraCurrent: string;
+        popularity: string;
+        popularityAny: string;
+        popularityMainstream: string;
+        popularityBalanced: string;
+        popularityNiche: string;
+        popularityUnderground: string;
+        discovery: string;
+        discoverySafe: string;
+        discoveryBalanced: string;
+        discoveryAdventurous: string;
+        discoveryUnderground: string;
+        variety: string;
+      };
+      vocals: {
+        title: string;
+        preference: string;
+        any: string;
+        mostlyVocal: string;
+        mostlyInstrumental: string;
+        instrumentalOnly: string;
+        female: string;
+        male: string;
+        mixed: string;
+        duets: string;
+        spokenWord: string;
+        whisperedBreathy: string;
+        explicit: string;
+      };
+      selection: {
+        title: string;
+        preferredArtists: string;
+        excludedArtists: string;
+        artistPlaceholder: string;
+        referenceTracks: string;
+        referenceTracksPlaceholder: string;
+        referenceTracksHint: string;
+        remixes: string;
+        liveVersions: string;
+        covers: string;
+      };
+      progression: {
+        title: string;
+        stable: string;
+        gradualRise: string;
+        gradualFall: string;
+        wave: string;
+        slowBurn: string;
+        peakAndRelease: string;
+        cinematicJourney: string;
+      };
+      context: {
+        title: string;
+        activity: string;
+        activityPlaceholder: string;
+        timeOfDay: string;
+        season: string;
+        locationAtmosphere: string;
+        locationPlaceholder: string;
+        customInstructions: string;
+        customInstructionsPlaceholder: string;
+      };
     };
   };
   settings: {
