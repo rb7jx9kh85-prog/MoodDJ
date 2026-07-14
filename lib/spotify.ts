@@ -171,14 +171,17 @@ type SpotifyPlaylist = {
   external_urls: { spotify: string };
 };
 
-/** Create a playlist on the user's account. */
+/**
+ * Create a playlist for the connected user. Spotify's February 2026 Web API
+ * changes removed `POST /users/{user_id}/playlists` entirely — creation is
+ * now always for the current user, via `POST /me/playlists`.
+ */
 export async function createPlaylist(
   accessToken: string,
-  userId: string,
   name: string,
   description: string
 ): Promise<{ id: string; url: string }> {
-  const res = await spotifyFetch(accessToken, `/users/${encodeURIComponent(userId)}/playlists`, {
+  const res = await spotifyFetch(accessToken, `/me/playlists`, {
     method: "POST",
     body: JSON.stringify({
       name,
@@ -201,7 +204,9 @@ export async function addTracksToPlaylist(
 ): Promise<void> {
   for (let i = 0; i < uris.length; i += 100) {
     const batch = uris.slice(i, i + 100);
-    const res = await spotifyFetch(accessToken, `/playlists/${playlistId}/tracks`, {
+    // Spotify's February 2026 Web API changes renamed this endpoint from
+    // /tracks to /items (same for the PUT below).
+    const res = await spotifyFetch(accessToken, `/playlists/${playlistId}/items`, {
       method: "POST",
       body: JSON.stringify({ uris: batch }),
     });
@@ -215,6 +220,8 @@ type SpotifyPlaylistItem = {
   id: string;
   name: string;
   images?: Array<{ url: string }>;
+  /** Renamed to `items` by Spotify's February 2026 Web API changes; `tracks` kept for safety. */
+  items?: { total: number };
   tracks?: { total: number };
   external_urls?: { spotify: string };
   owner?: { id: string };
@@ -245,7 +252,7 @@ export async function listOwnedPlaylists(
     .map((p) => ({
       id: p.id,
       name: p.name,
-      trackCount: p.tracks?.total ?? 0,
+      trackCount: p.items?.total ?? p.tracks?.total ?? 0,
       image: p.images?.[0]?.url,
       spotifyUrl: p.external_urls?.spotify ?? "",
     }));
@@ -261,7 +268,7 @@ export async function replacePlaylistTracks(
   uris: string[]
 ): Promise<void> {
   const first = uris.slice(0, 100);
-  const res = await spotifyFetch(accessToken, `/playlists/${playlistId}/tracks`, {
+  const res = await spotifyFetch(accessToken, `/playlists/${playlistId}/items`, {
     method: "PUT",
     body: JSON.stringify({ uris: first }),
   });
@@ -271,7 +278,7 @@ export async function replacePlaylistTracks(
 
   for (let i = 100; i < uris.length; i += 100) {
     const batch = uris.slice(i, i + 100);
-    const appendRes = await spotifyFetch(accessToken, `/playlists/${playlistId}/tracks`, {
+    const appendRes = await spotifyFetch(accessToken, `/playlists/${playlistId}/items`, {
       method: "POST",
       body: JSON.stringify({ uris: batch }),
     });
