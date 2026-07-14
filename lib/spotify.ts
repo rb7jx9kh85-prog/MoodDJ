@@ -193,9 +193,9 @@ type SpotifyPlaylistItem = {
   id: string;
   name: string;
   images?: Array<{ url: string }>;
-  tracks: { total: number };
-  external_urls: { spotify: string };
-  owner: { id: string };
+  tracks?: { total: number };
+  external_urls?: { spotify: string };
+  owner?: { id: string };
 };
 
 /** List playlists owned by the connected user (for the "update existing" picker). */
@@ -210,19 +210,22 @@ export async function listOwnedPlaylists(
     if (!res.ok) {
       throw await toApiError(res, "Could not load your Spotify playlists");
     }
-    const data = (await res.json()) as { items: SpotifyPlaylistItem[]; next: string | null };
-    all.push(...data.items);
+    const data = (await res.json()) as { items: (SpotifyPlaylistItem | null)[]; next: string | null };
+    all.push(...data.items.filter((p): p is SpotifyPlaylistItem => Boolean(p)));
     url = data.next ? data.next.replace(SPOTIFY_API, "") : "";
   }
 
+  // Spotify's /me/playlists can return items missing `tracks`/`external_urls`
+  // (seen in production for certain algorithmic/orphaned library entries) —
+  // never crash the whole list over one malformed entry.
   return all
     .filter((p) => p.owner?.id === userId)
     .map((p) => ({
       id: p.id,
       name: p.name,
-      trackCount: p.tracks.total,
+      trackCount: p.tracks?.total ?? 0,
       image: p.images?.[0]?.url,
-      spotifyUrl: p.external_urls.spotify,
+      spotifyUrl: p.external_urls?.spotify ?? "",
     }));
 }
 
