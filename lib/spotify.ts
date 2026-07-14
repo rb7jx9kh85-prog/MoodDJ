@@ -16,14 +16,27 @@ export class SpotifyApiError extends Error {
   status: number;
   /** Error message from Spotify's response body, when readable. */
   spotifyMessage?: string;
+  /** Machine-readable reason code Spotify sometimes includes (e.g. player errors). */
+  spotifyReason?: string;
+  /** The WWW-Authenticate response header, when Spotify sends one (often carries the real cause on 401/403). */
+  wwwAuthenticate?: string;
   /** Seconds to wait (from Retry-After) when status is 429. */
   retryAfter?: number;
-  constructor(message: string, status: number, spotifyMessage?: string, retryAfter?: number) {
+  constructor(
+    message: string,
+    status: number,
+    spotifyMessage?: string,
+    retryAfter?: number,
+    spotifyReason?: string,
+    wwwAuthenticate?: string
+  ) {
     super(message);
     this.name = "SpotifyApiError";
     this.status = status;
     this.spotifyMessage = spotifyMessage;
     this.retryAfter = retryAfter;
+    this.spotifyReason = spotifyReason;
+    this.wwwAuthenticate = wwwAuthenticate;
   }
 }
 
@@ -36,15 +49,23 @@ export class SpotifyApiError extends Error {
  */
 async function toApiError(res: Response, message: string): Promise<SpotifyApiError> {
   let spotifyMessage: string | undefined;
+  let spotifyReason: string | undefined;
   try {
-    const body = (await res.json()) as { error?: { message?: string } | string };
+    const body = (await res.json()) as {
+      error?: { message?: string; reason?: string } | string;
+    };
     spotifyMessage = typeof body?.error === "string" ? body.error : body?.error?.message;
+    spotifyReason = typeof body?.error === "object" ? body.error?.reason : undefined;
   } catch {
     /* non-JSON body — keep undefined */
   }
   const retryAfterRaw = res.status === 429 ? Number(res.headers.get("Retry-After")) : NaN;
   const retryAfter = Number.isFinite(retryAfterRaw) ? retryAfterRaw : undefined;
-  return new SpotifyApiError(message, res.status, spotifyMessage, retryAfter);
+  // On 401/403 Spotify sometimes puts the real cause here (e.g. `Bearer
+  // error="insufficient_scope"`) even when the JSON body is a bare
+  // "Forbidden" with no further detail.
+  const wwwAuthenticate = res.headers.get("www-authenticate") ?? undefined;
+  return new SpotifyApiError(message, res.status, spotifyMessage, retryAfter, spotifyReason, wwwAuthenticate);
 }
 
 /** 403 with Spotify's "Insufficient client scope" — token lacks a required scope. */
@@ -52,7 +73,8 @@ export function isInsufficientScope(err: unknown): boolean {
   return (
     err instanceof SpotifyApiError &&
     err.status === 403 &&
-    /insufficient client scope/i.test(err.spotifyMessage ?? "")
+    (/insufficient client scope/i.test(err.spotifyMessage ?? "") ||
+      /insufficient_scope/i.test(err.wwwAuthenticate ?? ""))
   );
 }
 
