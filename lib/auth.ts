@@ -7,8 +7,16 @@ import {
 } from "@/lib/cookies";
 import { refreshSpotifyToken } from "@/lib/spotify";
 
-/** Scopes required to read the profile and create playlists. */
+/**
+ * Scopes required to read the profile, list the user's playlists (including
+ * private/collaborative ones — without the read scopes GET /me/playlists
+ * can't see them) and create/update playlists. If this list changes,
+ * already-connected users must reconnect Spotify to grant the new scopes:
+ * their existing refresh token keeps the old grant forever.
+ */
 export const SPOTIFY_SCOPES = [
+  "playlist-read-private",
+  "playlist-read-collaborative",
   "playlist-modify-public",
   "playlist-modify-private",
   "user-read-private",

@@ -14,11 +14,55 @@ export class SpotifyAuthError extends Error {
 /** Generic Spotify API failure (non-401). */
 export class SpotifyApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** Error message from Spotify's response body, when readable. */
+  spotifyMessage?: string;
+  /** Seconds to wait (from Retry-After) when status is 429. */
+  retryAfter?: number;
+  constructor(message: string, status: number, spotifyMessage?: string, retryAfter?: number) {
     super(message);
     this.name = "SpotifyApiError";
     this.status = status;
+    this.spotifyMessage = spotifyMessage;
+    this.retryAfter = retryAfter;
   }
+}
+
+/**
+ * Build a SpotifyApiError that preserves Spotify's own error message and the
+ * Retry-After header. Without this, a 403 "Insufficient client scope" and a
+ * 403 "User not registered in the Developer Dashboard" (Development Mode)
+ * are indistinguishable in logs — which is exactly what made the playlist
+ * failures undiagnosable.
+ */
+async function toApiError(res: Response, message: string): Promise<SpotifyApiError> {
+  let spotifyMessage: string | undefined;
+  try {
+    const body = (await res.json()) as { error?: { message?: string } | string };
+    spotifyMessage = typeof body?.error === "string" ? body.error : body?.error?.message;
+  } catch {
+    /* non-JSON body — keep undefined */
+  }
+  const retryAfterRaw = res.status === 429 ? Number(res.headers.get("Retry-After")) : NaN;
+  const retryAfter = Number.isFinite(retryAfterRaw) ? retryAfterRaw : undefined;
+  return new SpotifyApiError(message, res.status, spotifyMessage, retryAfter);
+}
+
+/** 403 with Spotify's "Insufficient client scope" — token lacks a required scope. */
+export function isInsufficientScope(err: unknown): boolean {
+  return (
+    err instanceof SpotifyApiError &&
+    err.status === 403 &&
+    /insufficient client scope/i.test(err.spotifyMessage ?? "")
+  );
+}
+
+/** 403 for a user not allow-listed on a Development Mode Spotify app. */
+export function isUserNotRegistered(err: unknown): boolean {
+  return (
+    err instanceof SpotifyApiError &&
+    err.status === 403 &&
+    /not (be )?registered|development mode/i.test(err.spotifyMessage ?? "")
+  );
 }
 
 async function spotifyFetch(
@@ -52,7 +96,7 @@ export type SpotifyUser = {
 export async function getSpotifyMe(accessToken: string): Promise<SpotifyUser> {
   const res = await spotifyFetch(accessToken, "/me");
   if (!res.ok) {
-    throw new SpotifyApiError("Could not load Spotify profile", res.status);
+    throw await toApiError(res, "Could not load Spotify profile");
   }
   return (await res.json()) as SpotifyUser;
 }
@@ -91,7 +135,7 @@ export async function searchTracks(
   });
   const res = await spotifyFetch(accessToken, `/search?${params.toString()}`);
   if (!res.ok) {
-    throw new SpotifyApiError("Spotify search failed", res.status);
+    throw await toApiError(res, "Spotify search failed");
   }
   const data = (await res.json()) as {
     tracks?: { items?: SpotifyTrackItem[] };
@@ -121,7 +165,7 @@ export async function createPlaylist(
     }),
   });
   if (!res.ok) {
-    throw new SpotifyApiError("Could not create playlist", res.status);
+    throw await toApiError(res, "Could not create playlist");
   }
   const data = (await res.json()) as SpotifyPlaylist;
   return { id: data.id, url: data.external_urls.spotify };
@@ -140,7 +184,7 @@ export async function addTracksToPlaylist(
       body: JSON.stringify({ uris: batch }),
     });
     if (!res.ok) {
-      throw new SpotifyApiError("Could not add tracks to playlist", res.status);
+      throw await toApiError(res, "Could not add tracks to playlist");
     }
   }
 }
@@ -164,7 +208,7 @@ export async function listOwnedPlaylists(
   while (url) {
     const res = await spotifyFetch(accessToken, url);
     if (!res.ok) {
-      throw new SpotifyApiError("Could not load your Spotify playlists", res.status);
+      throw await toApiError(res, "Could not load your Spotify playlists");
     }
     const data = (await res.json()) as { items: SpotifyPlaylistItem[]; next: string | null };
     all.push(...data.items);
@@ -197,7 +241,7 @@ export async function replacePlaylistTracks(
     body: JSON.stringify({ uris: first }),
   });
   if (!res.ok) {
-    throw new SpotifyApiError("Could not update playlist", res.status);
+    throw await toApiError(res, "Could not update playlist");
   }
 
   for (let i = 100; i < uris.length; i += 100) {
@@ -207,7 +251,7 @@ export async function replacePlaylistTracks(
       body: JSON.stringify({ uris: batch }),
     });
     if (!appendRes.ok) {
-      throw new SpotifyApiError("Could not update playlist", appendRes.status);
+      throw await toApiError(appendRes, "Could not update playlist");
     }
   }
 }

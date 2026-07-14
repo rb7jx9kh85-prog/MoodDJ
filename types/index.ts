@@ -72,6 +72,8 @@ export type ApiError = {
   error: string;
   /** Machine-readable code so the frontend can branch (e.g. show "Connect Spotify"). */
   code?: ApiErrorCode;
+  /** True when the only way forward is reconnecting the Spotify account. */
+  reconnectRequired?: boolean;
 };
 
 export type ApiErrorCode =
@@ -84,6 +86,13 @@ export type ApiErrorCode =
   | "prompt_too_long"
   | "openai_error"
   | "spotify_error"
+  | "spotify_reauth_required"
+  | "spotify_insufficient_scope"
+  | "spotify_not_registered"
+  | "spotify_rate_limited"
+  | "spotify_playlist_create_failed"
+  | "spotify_tracks_add_failed"
+  | "spotify_playlists_list_failed"
   | "no_tracks"
   | "playlist_partial"
   | "invalid_tracks"

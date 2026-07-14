@@ -2,21 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import type { GeneratedPlaylistResponse, Track, ApiErrorCode } from "@/types";
 import { getValidAccessToken } from "@/lib/auth";
 import {
-  readRefreshToken,
-  setTokenCookies,
-  updateAccessTokenCookie,
-  clearTokenCookies,
-} from "@/lib/cookies";
-import {
   getSpotifyMe,
   searchTracks,
   createPlaylist,
   addTracksToPlaylist,
-  refreshSpotifyToken,
   getAppAccessToken,
-  SpotifyAuthError,
-  SpotifyApiError,
 } from "@/lib/spotify";
+import { withFreshToken, spotifyFailureResponse } from "@/lib/spotify-session";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
 import {
   sanitizePrompt,
@@ -27,37 +19,13 @@ import {
 } from "@/lib/utils";
 import { getUidFromRequest, getUserQuota, canGenerate, canPushToSpotify, recordGeneration } from "@/lib/quota";
 
+// firebase-admin (via lib/quota) needs Node APIs, not the Edge runtime.
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 function errorResponse(message: string, code: ApiErrorCode, status: number) {
   return NextResponse.json({ error: message, code }, { status });
-}
-
-/**
- * Run a Spotify operation with a *user* access token, transparently
- * refreshing once if Spotify rejects the token mid-request. Only relevant
- * when we're actually acting on the user's account (pushToSpotify=true) —
- * the app-only token used for search-only requests never needs this.
- */
-async function withFreshToken<T>(
-  token: string,
-  op: (token: string) => Promise<T>
-): Promise<T> {
-  try {
-    return await op(token);
-  } catch (err) {
-    if (!(err instanceof SpotifyAuthError)) throw err;
-    const refresh = await readRefreshToken();
-    if (!refresh) throw err;
-    const refreshed = await refreshSpotifyToken(refresh);
-    if (refreshed.refreshToken) {
-      await setTokenCookies(refreshed.accessToken, refreshed.refreshToken, refreshed.expiresIn);
-    } else {
-      await updateAccessTokenCookie(refreshed.accessToken, refreshed.expiresIn);
-    }
-    return op(refreshed.accessToken);
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -204,12 +172,14 @@ export async function POST(req: NextRequest) {
       await withFreshToken(userAccessToken, (t) =>
         addTracksToPlaylist(t, playlist.id, selected.map((s) => s.uri))
       );
-    } catch {
-      return errorResponse(
-        "Your playlist was created but tracks could not be added. Please try again.",
-        "playlist_partial",
-        502
-      );
+    } catch (err) {
+      return spotifyFailureResponse(err, {
+        route: "/api/generate",
+        uid,
+        fallbackCode: "spotify_tracks_add_failed",
+        fallbackMessage:
+          "Your playlist was created but tracks could not be added. Please try again.",
+      });
     }
 
     await recordGeneration(uid);
@@ -221,20 +191,11 @@ export async function POST(req: NextRequest) {
     };
     return NextResponse.json(response);
   } catch (err) {
-    if (err instanceof SpotifyAuthError) {
-      await clearTokenCookies();
-      return errorResponse(
-        "Your Spotify session expired. Please connect again.",
-        "session_expired",
-        401
-      );
-    }
-    const status = err instanceof SpotifyApiError ? err.status : undefined;
-    console.error("[/api/generate] Spotify error", { status, message: (err as Error)?.message, err });
-    return errorResponse(
-      "Spotify could not create the playlist right now. Please reconnect and try again.",
-      "spotify_error",
-      502
-    );
+    return spotifyFailureResponse(err, {
+      route: "/api/generate",
+      uid,
+      fallbackCode: "spotify_playlist_create_failed",
+      fallbackMessage: "Spotify could not create the playlist right now. Please try again.",
+    });
   }
 }

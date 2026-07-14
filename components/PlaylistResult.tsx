@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { GeneratedPlaylistResponse, OwnedPlaylist } from "@/types";
+import type { ApiError, GeneratedPlaylistResponse, OwnedPlaylist } from "@/types";
 import { blurReveal, staggerContainer } from "@/lib/animations";
 import TrackCard from "./TrackCard";
 import PlaylistCover from "./PlaylistCover";
@@ -28,6 +28,7 @@ export default function PlaylistResult({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ownedPlaylists, setOwnedPlaylists] = useState<OwnedPlaylist[] | null>(null);
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
+  const [playlistsError, setPlaylistsError] = useState<string | null>(null);
   const [target, setTarget] = useState<"new" | string>("new");
 
   const copyLink = async () => {
@@ -45,16 +46,19 @@ export default function PlaylistResult({
     setPickerOpen(true);
     if (ownedPlaylists !== null) return;
     setLoadingPlaylists(true);
+    setPlaylistsError(null);
     try {
       const res = await fetch("/api/spotify/playlists");
       if (res.ok) {
         const json = (await res.json()) as { playlists: OwnedPlaylist[] };
         setOwnedPlaylists(json.playlists);
       } else {
-        setOwnedPlaylists([]);
+        // An API failure must stay visible — never masquerade as "no playlists".
+        const data = (await res.json().catch(() => ({}))) as ApiError;
+        setPlaylistsError(data.error || "Could not load your Spotify playlists.");
       }
     } catch {
-      setOwnedPlaylists([]);
+      setPlaylistsError("Network error while loading your playlists.");
     } finally {
       setLoadingPlaylists(false);
     }
@@ -200,7 +204,23 @@ export default function PlaylistResult({
 
             {loadingPlaylists && <p className="px-2 py-2 text-xs text-muted">Loading your playlists…</p>}
 
-            {!loadingPlaylists && ownedPlaylists && ownedPlaylists.length > 0 && (
+            {!loadingPlaylists && playlistsError && (
+              <div className="mx-2 my-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2">
+                <p className="text-xs text-rose-300">{playlistsError}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOwnedPlaylists(null);
+                    void openPicker();
+                  }}
+                  className="mt-1.5 text-xs font-medium text-soft underline underline-offset-2"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!loadingPlaylists && !playlistsError && ownedPlaylists && ownedPlaylists.length > 0 && (
               <div className="mt-1 max-h-48 space-y-1 overflow-y-auto">
                 {ownedPlaylists.map((p) => (
                   <label
@@ -221,7 +241,7 @@ export default function PlaylistResult({
               </div>
             )}
 
-            {!loadingPlaylists && ownedPlaylists && ownedPlaylists.length === 0 && (
+            {!loadingPlaylists && !playlistsError && ownedPlaylists && ownedPlaylists.length === 0 && (
               <p className="px-2 py-2 text-xs text-muted">No existing playlists found on your account.</p>
             )}
 

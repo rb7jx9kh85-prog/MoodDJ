@@ -33,6 +33,18 @@ function goToSpotifyLogin() {
   window.location.href = "/api/auth/spotify/login";
 }
 
+/** True when the API says the fix is reconnecting Spotify (not just retrying). */
+function needsSpotifyReconnect(data: ApiError): boolean {
+  return (
+    data.reconnectRequired === true ||
+    data.code === "not_connected" ||
+    data.code === "session_expired" ||
+    data.code === "spotify_reauth_required" ||
+    data.code === "spotify_insufficient_scope" ||
+    data.code === "spotify_not_registered"
+  );
+}
+
 export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProps) {
   const { t } = useLanguage();
   const router = useRouter();
@@ -81,7 +93,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as ApiError;
-        const showConnect = data.code === "not_connected" || data.code === "session_expired";
+        const showConnect = needsSpotifyReconnect(data);
         const showLogin = data.code === "not_authenticated";
         const showUpgrade = data.code === "quota_exceeded" || data.code === "upgrade_required";
         if (showConnect) setConnected(false);
@@ -126,7 +138,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as ApiError;
-        const showConnect = data.code === "not_connected" || data.code === "session_expired";
+        const showConnect = needsSpotifyReconnect(data);
         const showLogin = data.code === "not_authenticated";
         const showUpgrade = data.code === "upgrade_required";
         if (showConnect) setConnected(false);

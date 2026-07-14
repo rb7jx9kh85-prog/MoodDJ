@@ -1,34 +1,34 @@
 import { NextResponse } from "next/server";
-import type { ApiErrorCode, OwnedPlaylist } from "@/types";
+import type { OwnedPlaylist } from "@/types";
 import { getValidAccessToken } from "@/lib/auth";
-import { clearTokenCookies } from "@/lib/cookies";
-import { getSpotifyMe, listOwnedPlaylists, SpotifyAuthError, SpotifyApiError } from "@/lib/spotify";
+import { getSpotifyMe, listOwnedPlaylists } from "@/lib/spotify";
+import { withFreshToken, spotifyFailureResponse, errorJson } from "@/lib/spotify-session";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function errorResponse(message: string, code: ApiErrorCode, status: number) {
-  return NextResponse.json({ error: message, code }, { status });
-}
-
-/** List the connected user's own Spotify playlists, for the "update existing" picker. */
+/**
+ * List the connected user's own Spotify playlists, for the "update existing"
+ * picker. An API failure returns a real error — it must never be presented
+ * to the client as an empty list.
+ */
 export async function GET() {
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
-    return errorResponse("Connect your Spotify account first.", "not_connected", 401);
+    return errorJson("Connect your Spotify account first.", "not_connected", 401, true);
   }
 
   try {
-    const me = await getSpotifyMe(accessToken);
-    const playlists = await listOwnedPlaylists(accessToken, me.id);
+    const me = await withFreshToken(accessToken, (t) => getSpotifyMe(t));
+    const playlists = await withFreshToken(accessToken, (t) => listOwnedPlaylists(t, me.id));
+    console.log("[/api/spotify/playlists] done", { count: playlists.length });
     const response: OwnedPlaylist[] = playlists;
     return NextResponse.json({ playlists: response });
   } catch (err) {
-    if (err instanceof SpotifyAuthError) {
-      await clearTokenCookies();
-      return errorResponse("Your Spotify session expired. Please connect again.", "session_expired", 401);
-    }
-    const status = err instanceof SpotifyApiError ? err.status : undefined;
-    console.error("[/api/spotify/playlists] Spotify error", { status, err });
-    return errorResponse("Could not load your Spotify playlists.", "spotify_error", 502);
+    return spotifyFailureResponse(err, {
+      route: "/api/spotify/playlists",
+      fallbackCode: "spotify_playlists_list_failed",
+      fallbackMessage: "Could not load your Spotify playlists. Please try again.",
+    });
   }
 }
