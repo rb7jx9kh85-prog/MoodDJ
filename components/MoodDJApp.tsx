@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import type {
@@ -13,7 +13,7 @@ import { useFirebaseUser } from "@/lib/useFirebaseUser";
 import { signOutUser } from "@/lib/firebase-auth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import LanguageSelector from "@/components/LanguageSelector";
-import { Settings } from "lucide-react";
+import { Settings, Gift, History } from "lucide-react";
 import Hero from "./Hero";
 import MoodInput from "./MoodInput";
 import LoadingExperience from "./LoadingExperience";
@@ -65,6 +65,30 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     showLogin: false,
     showUpgrade: false,
   });
+
+  // If the user just verified their email (e.g. clicked the link in a
+  // separate tab), claim the one-time referee welcome bonus. Safe to call on
+  // every load — the server re-checks emailVerified and is idempotent.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await firebaseUser.reload();
+        if (cancelled || !firebaseUser.emailVerified) return;
+        const idToken = await firebaseUser.getIdToken();
+        await fetch("/api/referral/claim-verified-bonus", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+      } catch {
+        /* best-effort — retried on next load */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUser]);
 
   const generate = async (pushToSpotify: boolean, options: GenerationOptions) => {
     if (!prompt.trim()) {
@@ -179,6 +203,22 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
         <AnimatedLogo size={32} withWordmark />
         <div className="flex flex-wrap items-center justify-end gap-2">
           <LanguageSelector className="hidden sm:block" />
+          <a
+            href="/historique"
+            aria-label="Playlist history"
+            title="Playlist history"
+            className="shrink-0 rounded-full border border-white/10 bg-white/5 p-2.5 text-muted transition-colors hover:text-soft"
+          >
+            <History className="size-4" />
+          </a>
+          <a
+            href="/parrainage"
+            aria-label="Referral program"
+            title="Referral program"
+            className="shrink-0 rounded-full border border-white/10 bg-white/5 p-2.5 text-muted transition-colors hover:text-soft"
+          >
+            <Gift className="size-4" />
+          </a>
           <a
             href="/settings"
             aria-label="Settings"

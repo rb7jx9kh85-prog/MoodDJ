@@ -8,6 +8,8 @@ export type UserQuota = {
   uid: string;
   plan: Plan;
   generationsUsed: number;
+  /** Bonus generations earned via the referral program — consumed before falling back to the plan limit. */
+  bonusGenerationCredits: number;
 };
 
 /** Verifies the Firebase ID token sent as `Authorization: Bearer <token>`. Returns null if missing/invalid. */
@@ -40,12 +42,31 @@ export async function getUserQuota(uid: string): Promise<UserQuota> {
     uid,
     plan: normalizePlan(data.plan),
     generationsUsed: typeof data.generationsUsed === "number" ? data.generationsUsed : 0,
+    bonusGenerationCredits:
+      typeof data.bonusGenerationCredits === "number" ? data.bonusGenerationCredits : 0,
   };
 }
 
-/** Free plan gets exactly one lifetime generation; Flow and Flow Sync are unlimited. */
+/**
+ * Free plan gets exactly one lifetime generation, plus one more per unused
+ * referral bonus credit; Flow and Flow Sync are unlimited (credits simply
+ * aren't consumed for them — see consumeBonusCreditIfNeeded).
+ */
 export function canGenerate(quota: UserQuota): boolean {
-  return quota.plan !== "free" || quota.generationsUsed < 1;
+  return quota.plan !== "free" || quota.generationsUsed < 1 || quota.bonusGenerationCredits > 0;
+}
+
+/** Whether this generation is only possible because of a referral bonus credit (free plan, quota otherwise exhausted). */
+export function isUsingBonusCredit(quota: UserQuota): boolean {
+  return quota.plan === "free" && quota.generationsUsed >= 1 && quota.bonusGenerationCredits > 0;
+}
+
+/** Consumes one bonus credit — call once per generation when isUsingBonusCredit(quota) was true. */
+export async function consumeBonusCredit(uid: string): Promise<void> {
+  await getAdminDb()
+    .collection("users")
+    .doc(uid)
+    .set({ bonusGenerationCredits: FieldValue.increment(-1) }, { merge: true });
 }
 
 /** Flow Sync and Lifetime can push to Spotify (create or update a playlist there). */

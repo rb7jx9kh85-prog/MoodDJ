@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   updateProfile,
+  sendEmailVerification,
   signOut,
   type User,
 } from "firebase/auth";
@@ -85,6 +86,17 @@ export async function signUpWithEmail(
 
   await ensureUserProfile(user);
 
+  // Google/Apple sign-in are pre-verified by their provider; email/password
+  // is the only path that needs this — required before any referral reward
+  // tied to this account can be granted (see lib/referral.ts).
+  try {
+    await sendEmailVerification(user);
+  } catch (err) {
+    console.error("[auth] sendEmailVerification failed", err);
+    // Non-fatal — the account still works, just without the referral bonus
+    // until the user re-triggers verification (e.g. from Settings).
+  }
+
   return user;
 }
 
@@ -139,6 +151,11 @@ export async function signInWithApple(): Promise<User> {
 
 export async function signOutUser(): Promise<void> {
   await signOut(getFirebaseAuth());
+}
+
+/** Re-sends the verification email (e.g. from the referral page, if the first one was missed). */
+export async function resendEmailVerification(user: User): Promise<void> {
+  await sendEmailVerification(user);
 }
 
 export class AuthTimeoutError extends Error {

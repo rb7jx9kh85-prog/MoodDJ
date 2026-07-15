@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ApiError, GeneratedPlaylistResponse, OwnedPlaylist } from "@/types";
 import { blurReveal, staggerContainer } from "@/lib/animations";
+import { useFirebaseUser } from "@/lib/useFirebaseUser";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import TrackCard from "./TrackCard";
 import PlaylistCover from "./PlaylistCover";
+import ShareSheet from "./referral/ShareSheet";
 
 type PlaylistResultProps = {
   data: GeneratedPlaylistResponse;
@@ -24,6 +27,8 @@ export default function PlaylistResult({
   onConnect,
   onReset,
 }: PlaylistResultProps) {
+  const { t } = useLanguage();
+  const { user } = useFirebaseUser();
   const [copied, setCopied] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ownedPlaylists, setOwnedPlaylists] = useState<OwnedPlaylist[] | null>(null);
@@ -33,6 +38,27 @@ export default function PlaylistResult({
     reconnectRequired: boolean;
   } | null>(null);
   const [target, setTarget] = useState<"new" | string>("new");
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  // Fetched lazily, only needed for the "invite a friend" share link below.
+  useEffect(() => {
+    if (!data.pushedToSpotify || !user) return;
+    user.getIdToken().then((idToken) => {
+      fetch("/api/referral/me", { headers: { Authorization: `Bearer ${idToken}` } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => setReferralCode(json?.profile?.referralCode ?? null))
+        .catch(() => {});
+    });
+  }, [data.pushedToSpotify, user]);
+
+  const trackShare = () => {
+    user?.getIdToken().then((idToken) => {
+      fetch("/api/referral/track-share", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+      }).catch(() => {});
+    });
+  };
 
   const copyLink = async () => {
     if (!data.spotifyPlaylistUrl) return;
@@ -191,6 +217,24 @@ export default function PlaylistResult({
           Generate another vibe
         </button>
       </div>
+
+      {/* Invite a friend — reuses the referral program's share component */}
+      {data.pushedToSpotify && data.spotifyPlaylistUrl && referralCode && (
+        <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-white/5 bg-white/[0.03] p-4 text-center sm:flex-row sm:justify-between sm:text-left">
+          <div>
+            <p className="text-sm font-medium text-soft">{t.referral.inviteFriendCta}</p>
+            <p className="text-xs text-muted">{t.referral.inviteFriendSubtitle}</p>
+          </div>
+          <ShareSheet
+            url={data.spotifyPlaylistUrl}
+            title={t.referral.shareTitle}
+            text={t.referral.shareMessage}
+            label={t.referral.share}
+            copiedLabel={t.referral.copied}
+            onShared={trackShare}
+          />
+        </div>
+      )}
 
       {/* New vs. existing playlist picker */}
       <AnimatePresence>

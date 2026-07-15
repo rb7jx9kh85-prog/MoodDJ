@@ -14,7 +14,18 @@ import {
 import { withFreshToken, spotifyFailureResponse } from "@/lib/spotify-session";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
 import { sanitizePrompt, sanitizeGenerationOptions, MAX_PROMPT_LENGTH } from "@/lib/utils";
-import { getUidFromRequest, getUserQuota, canGenerate, canPushToSpotify, recordGeneration } from "@/lib/quota";
+import {
+  getUidFromRequest,
+  getUserQuota,
+  canGenerate,
+  canPushToSpotify,
+  recordGeneration,
+  isUsingBonusCredit,
+  consumeBonusCredit,
+  type UserQuota,
+} from "@/lib/quota";
+import { recordPlaylistHistory } from "@/lib/playlist-history";
+import { recordPlaylistGenerated, activateReferralIfEligible } from "@/lib/referral";
 
 // firebase-admin (via lib/quota) needs Node APIs, not the Edge runtime.
 export const runtime = "nodejs";
@@ -23,6 +34,36 @@ export const maxDuration = 60;
 
 function errorResponse(message: string, code: ApiErrorCode, status: number) {
   return NextResponse.json({ error: message, code }, { status });
+}
+
+/**
+ * Post-generation bookkeeping: quota consumption, playlist history, and
+ * referral activation. History/referral steps are best-effort — a failure
+ * here must never turn a successful generation into an error response for
+ * the user.
+ */
+async function finalizeGeneration(
+  uid: string,
+  quota: UserQuota,
+  response: GeneratedPlaylistResponse
+): Promise<void> {
+  await recordGeneration(uid);
+  if (isUsingBonusCredit(quota)) {
+    await consumeBonusCredit(uid);
+  }
+
+  try {
+    const { isFirstEver } = await recordPlaylistHistory(uid, response);
+    await recordPlaylistGenerated(uid);
+    if (isFirstEver) {
+      await activateReferralIfEligible(uid);
+    }
+  } catch (err) {
+    console.error("[/api/generate] Referral/history bookkeeping failed", {
+      uid: uid.slice(0, 6),
+      reason: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -206,8 +247,8 @@ export async function POST(req: NextRequest) {
     };
 
     if (!pushToSpotify || !userAccessToken) {
-      await recordGeneration(uid);
       const response: GeneratedPlaylistResponse = { ...base, pushedToSpotify: false };
+      await finalizeGeneration(uid, quota, response);
       return NextResponse.json(response);
     }
 
@@ -230,13 +271,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    await recordGeneration(uid);
     const response: GeneratedPlaylistResponse = {
       ...base,
       pushedToSpotify: true,
       spotifyPlaylistUrl: playlist.url,
       playlistId: playlist.id,
     };
+    await finalizeGeneration(uid, quota, response);
     return NextResponse.json(response);
   } catch (err) {
     return spotifyFailureResponse(err, {
