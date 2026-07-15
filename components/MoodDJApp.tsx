@@ -157,6 +157,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
           playlistDescription: result.playlistDescription,
           trackUris: result.tracks.map((t) => t.uri),
           existingPlaylistId,
+          coverImageUrl: result.coverImageUrl,
         }),
       });
 
