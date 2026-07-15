@@ -8,7 +8,6 @@ export const MAX_PROMPT_LENGTH = 2000;
 
 // Matches ASCII control characters (NUL through US, plus DEL) without
 // embedding literal control bytes in the source file.
-// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = new RegExp("[\\x00-\\x1F\\x7F]", "g");
 
 /**

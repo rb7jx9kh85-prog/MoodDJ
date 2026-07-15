@@ -4,6 +4,7 @@ import {
   updateAccessTokenCookie,
   setTokenCookies,
   clearTokenCookies,
+  readTokenOwner,
 } from "@/lib/cookies";
 import { refreshSpotifyToken } from "@/lib/spotify";
 
@@ -33,7 +34,8 @@ export const SPOTIFY_SCOPES = [
  * access cookie has expired but we still hold a refresh token.
  * Returns null when the user is not connected / cannot be refreshed.
  */
-export async function getValidAccessToken(): Promise<string | null> {
+export async function getValidAccessToken(expectedUid: string): Promise<string | null> {
+  if ((await readTokenOwner()) !== expectedUid) return null;
   const access = await readAccessToken();
   if (access) return access;
 
@@ -44,7 +46,7 @@ export async function getValidAccessToken(): Promise<string | null> {
     const result = await refreshSpotifyToken(refresh);
     if (result.refreshToken) {
       // Spotify rotated the refresh token — persist both.
-      await setTokenCookies(result.accessToken, result.refreshToken, result.expiresIn);
+      await setTokenCookies(result.accessToken, result.refreshToken, result.expiresIn, expectedUid);
     } else {
       await updateAccessTokenCookie(result.accessToken, result.expiresIn);
     }
@@ -58,5 +60,5 @@ export async function getValidAccessToken(): Promise<string | null> {
 
 /** Whether the user currently has any Spotify session (access or refresh). */
 export async function isConnected(): Promise<boolean> {
-  return Boolean((await readAccessToken()) || (await readRefreshToken()));
+  return Boolean((await readTokenOwner()) && ((await readAccessToken()) || (await readRefreshToken())));
 }

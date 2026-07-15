@@ -19,32 +19,35 @@ export async function recordPlaylistHistory(
 ): Promise<{ isFirstEver: boolean }> {
   const db = getAdminDb();
   const historyCollection = db.collection("playlistHistory");
-
-  const existing = await historyCollection.where("uid", "==", uid).limit(1).get();
-  const isFirstEver = existing.empty;
-
   const ref = historyCollection.doc();
-  await ref.set({
-    id: ref.id,
-    uid,
-    playlistName: data.playlistName,
-    playlistDescription: data.playlistDescription,
-    vibe: data.vibe,
-    genres: data.genres,
-    energy: data.energy,
-    trackCount: data.tracks.length,
-    tracks: data.tracks.map((t) => ({
-      id: t.id,
-      name: t.name,
-      artist: t.artist,
-      image: t.image ?? null,
-      uri: t.uri,
-      spotifyUrl: t.spotifyUrl,
-    })),
-    pushedToSpotify: data.pushedToSpotify,
-    spotifyPlaylistUrl: data.spotifyPlaylistUrl ?? null,
-    coverImageUrl: data.coverImageUrl ?? null,
-    createdAt: FieldValue.serverTimestamp(),
+  const userRef = db.collection("users").doc(uid);
+  const isFirstEver = await db.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    const first = userSnap.data()?.hasGeneratedPlaylist !== true;
+    tx.set(userRef, { hasGeneratedPlaylist: true }, { merge: true });
+    tx.set(ref, {
+      id: ref.id,
+      uid,
+      playlistName: data.playlistName,
+      playlistDescription: data.playlistDescription,
+      vibe: data.vibe,
+      genres: data.genres,
+      energy: data.energy,
+      trackCount: data.tracks.length,
+      tracks: data.tracks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        artist: t.artist,
+        image: t.image ?? null,
+        uri: t.uri,
+        spotifyUrl: t.spotifyUrl,
+      })),
+       pushedToSpotify: data.pushedToSpotify,
+       spotifyPlaylistUrl: data.spotifyPlaylistUrl ?? null,
+       coverImageUrl: data.coverImageUrl ?? null,
+       createdAt: FieldValue.serverTimestamp(),
+    });
+     return first;
   });
 
   return { isFirstEver };

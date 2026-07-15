@@ -84,7 +84,7 @@ export async function completeFakeCheckout(
       case "invalid_request":
         throw new Error("Requête invalide. Réessaie.");
       default:
-        throw new Error("Impossible de finaliser la simulation de paiement. Réessaie.");
+        throw new Error(data.error || "Vous n’êtes pas autorisé à utiliser le service.");
     }
   }
 

@@ -1,12 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { setStateCookie } from "@/lib/cookies";
 import { SPOTIFY_SCOPES } from "@/lib/auth";
+import { getUidFromRequest } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 
 /** Build the Spotify authorize URL and redirect the user there. */
-export async function GET() {
+export async function POST(req: NextRequest) {
+  const uid = await getUidFromRequest(req);
+  if (!uid) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
@@ -19,7 +24,7 @@ export async function GET() {
 
   // CSRF protection: random state, stored signed in an httpOnly cookie.
   const state = randomBytes(16).toString("hex");
-  await setStateCookie(state);
+  await setStateCookie(`${state}:${uid}`);
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -30,5 +35,5 @@ export async function GET() {
     show_dialog: "false",
   });
 
-  return NextResponse.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
+  return NextResponse.json({ authorizeUrl: `https://accounts.spotify.com/authorize?${params.toString()}` });
 }

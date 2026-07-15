@@ -11,6 +11,7 @@ import { fetchImageAsBuffer, toSpotifySafeJpegBase64 } from "@/lib/cover-art";
 import { withFreshToken, spotifyFailureResponse, errorJson } from "@/lib/spotify-session";
 import { sanitizePrompt } from "@/lib/utils";
 import { getUidFromRequest, getUserQuota, canPushToSpotify } from "@/lib/quota";
+import { enforceRateLimit, RateLimitError } from "@/lib/rate-limit";
 
 // firebase-admin (via lib/quota) needs Node APIs, not the Edge runtime.
 export const runtime = "nodejs";
@@ -28,6 +29,17 @@ export async function POST(req: NextRequest) {
   if (!uid) {
     return errorJson("Sign in to your Mood DJ account first.", "not_authenticated", 401);
   }
+  try {
+    await enforceRateLimit("spotify_push", uid, 10, 60);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Too many requests.", code: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(err.retryAfterSeconds) } }
+      );
+    }
+    throw err;
+  }
   const quota = await getUserQuota(uid);
   if (!canPushToSpotify(quota)) {
     return errorJson(
@@ -38,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Spotify connection check (refreshes the access token if expired).
-  const accessToken = await getValidAccessToken();
+  const accessToken = await getValidAccessToken(uid);
   if (!accessToken) {
     return errorJson(
       "Connect your Spotify account first to push a playlist.",
@@ -66,14 +78,23 @@ export async function POST(req: NextRequest) {
   const name = sanitizePrompt(playlistName).slice(0, 100) || "Mood DJ Playlist";
   const description = typeof playlistDescription === "string" ? playlistDescription.slice(0, 300) : "";
   const targetPlaylistId =
-    typeof existingPlaylistId === "string" && existingPlaylistId ? existingPlaylistId : null;
+    typeof existingPlaylistId === "string" && /^[A-Za-z0-9]{10,64}$/.test(existingPlaylistId)
+      ? existingPlaylistId
+      : null;
   const coverUrl = typeof coverImageUrl === "string" && coverImageUrl ? coverImageUrl : null;
+
+  if (existingPlaylistId != null && !targetPlaylistId) {
+    return errorJson("Invalid playlist identifier.", "invalid_tracks", 400);
+  }
 
   // Only well-formed track URIs may reach Spotify (IDs alone are rejected).
   const rawUris = Array.isArray(trackUris) ? trackUris : [];
-  const validUris = rawUris.filter(
+  if (rawUris.length > 100) {
+    return errorJson("A playlist may contain at most 100 tracks.", "invalid_tracks", 400);
+  }
+  const validUris = Array.from(new Set(rawUris.filter(
     (u): u is string => typeof u === "string" && /^spotify:track:[A-Za-z0-9]+$/.test(u)
-  );
+  )));
 
   if (validUris.length === 0) {
     console.error("[/api/push-to-spotify] No valid track URIs", {

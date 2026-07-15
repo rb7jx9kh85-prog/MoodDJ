@@ -29,10 +29,6 @@ type MoodDJAppProps = {
   authError?: string;
 };
 
-function goToSpotifyLogin() {
-  window.location.href = "/api/auth/spotify/login";
-}
-
 /** True when the API says the fix is reconnecting Spotify (not just retrying). */
 function needsSpotifyReconnect(data: ApiError): boolean {
   return (
@@ -65,6 +61,56 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     showLogin: false,
     showUpgrade: false,
   });
+
+  const goToSpotifyLogin = async () => {
+    if (!firebaseUser) {
+      router.push("/login");
+      return;
+    }
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const res = await fetch("/api/auth/spotify/login", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = (await res.json()) as { authorizeUrl?: string; error?: string };
+      if (!res.ok || !data.authorizeUrl) throw new Error(data.error || "Spotify login failed");
+      window.location.assign(data.authorizeUrl);
+    } catch {
+      setError({
+        message: "Could not start Spotify connection. Please try again.",
+        showConnect: true,
+        showLogin: false,
+        showUpgrade: false,
+      });
+      setStatus("error");
+    }
+  };
+
+  const disconnectSpotify = async () => {
+    if (!firebaseUser) return;
+    const idToken = await firebaseUser.getIdToken();
+    await fetch("/api/auth/spotify/logout", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+    setConnected(false);
+  };
+
+  useEffect(() => {
+    if (!firebaseUser) {
+      setConnected(false);
+      return;
+    }
+    firebaseUser.getIdToken().then((idToken) =>
+      fetch("/api/auth/spotify/status", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      })
+        .then((res) => res.json())
+        .then((data) => setConnected(data.connected === true))
+        .catch(() => setConnected(false))
+    );
+  }, [firebaseUser]);
 
   // If the user just verified their email (e.g. clicked the link in a
   // separate tab), claim the one-time referee welcome bonus. Safe to call on
@@ -232,7 +278,10 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
             <>
               {firebaseUser ? (
                 <button
-                  onClick={() => signOutUser()}
+                  onClick={async () => {
+                    await disconnectSpotify().catch(() => {});
+                    await signOutUser();
+                  }}
                   title={firebaseUser.email ?? undefined}
                   className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
                 >
@@ -249,12 +298,13 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
             </>
           )}
           {connected ? (
-            <a
-              href="/api/auth/spotify/logout"
+            <button
+              type="button"
+              onClick={disconnectSpotify}
               className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-soft"
             >
               {t.app.spotifyConnected}
-            </a>
+            </button>
           ) : (
             <button
               onClick={goToSpotifyLogin}

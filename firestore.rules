@@ -38,6 +38,8 @@ service cloud.firestore {
           "createdAt"
         ])
         && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == request.time
         && request.resource.data.plan == "free"
         && request.resource.data.selectedPlan == null
         && request.resource.data.onboardingCompleted == false;
@@ -62,8 +64,9 @@ service cloud.firestore {
     // via the Admin SDK, which bypasses these rules entirely. The client only
     // ever reads.
     match /referralProfiles/{uid} {
-      allow read: if request.auth != null; // needed for the friends leaderboard to read other profiles
-      allow write: if false;
+      // All referral reads are projected through authenticated API routes so
+      // balances, referrer UIDs and internal counters are never bulk-readable.
+      allow read, write: if false;
     }
 
     match /referrals/{referralId} {
