@@ -33,7 +33,11 @@ export async function GET(req: NextRequest) {
   const verified = verifyState(cookieState);
   await clearStateCookie();
 
-  if (!state || !verified || verified !== state) {
+  const separator = verified?.indexOf(":") ?? -1;
+  const expectedState = separator > 0 ? verified!.slice(0, separator) : null;
+  const ownerUid = separator > 0 ? verified!.slice(separator + 1) : null;
+
+  if (!state || !expectedState || !ownerUid || expectedState !== state) {
     return redirectWithError("state_mismatch");
   }
 
@@ -43,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForTokens(code);
-    await setTokenCookies(accessToken, refreshToken, expiresIn);
+    await setTokenCookies(accessToken, refreshToken, expiresIn, ownerUid);
     return NextResponse.redirect(`${appUrl}/app?connected=1`);
   } catch {
     return redirectWithError("token_exchange_failed");

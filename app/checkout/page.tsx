@@ -24,7 +24,6 @@ import LogoMark from "@/components/LogoMark";
 import LanguageSelector from "@/components/LanguageSelector";
 
 import { isSelectablePlan, PLAN_CATALOG, formatChf, type SelectablePlan } from "@/lib/plans";
-import { resolveDiscountCode, type DiscountResolution } from "@/lib/discount-codes";
 import { completeFakeCheckout } from "@/lib/plan-onboarding";
 import { useFirebaseUser } from "@/lib/useFirebaseUser";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
@@ -93,7 +92,7 @@ function CheckoutContent() {
 
   // --- Promo code ---
   const [promoInput, setPromoInput] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState<DiscountResolution | null>(null);
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
   // --- Fake card fields (never sent anywhere) ---
@@ -113,7 +112,7 @@ function CheckoutContent() {
   const planCopy = t.pricing.plans[planIndex];
 
   const originalPriceCents = catalogEntry.priceCents;
-  const discountPercent = appliedDiscount?.valid ? appliedDiscount.percent : 0;
+  const discountPercent = appliedCode ? 100 : 0;
   const discountAmountCents = useMemo(
     () => Math.round((originalPriceCents * discountPercent) / 100),
     [originalPriceCents, discountPercent]
@@ -123,13 +122,15 @@ function CheckoutContent() {
 
   function handleApplyPromo() {
     setPromoError(null);
-    const resolution = resolveDiscountCode(promoInput, plan);
-    if (!resolution.valid) {
-      setAppliedDiscount(null);
-      setPromoError("Code promo invalide pour ce plan.");
+    const normalized = promoInput.trim().toUpperCase().replace(/\s+/g, "");
+    if (!normalized) {
+      setAppliedCode(null);
+      setPromoError("Un code d’autorisation est requis.");
       return;
     }
-    setAppliedDiscount(resolution);
+    // The API remains the authority. The browser only previews the submitted
+    // code and never contains the invitation-code catalog.
+    setAppliedCode(normalized);
   }
 
   function fillTestCard() {
@@ -169,7 +170,7 @@ function CheckoutContent() {
 
     setSubmitting(true);
     try {
-      await completeFakeCheckout(plan, appliedDiscount?.valid ? appliedDiscount.code : null);
+      await completeFakeCheckout(plan, appliedCode);
       setSuccess(true);
       window.setTimeout(() => {
         const target = vibe ? `/app?vibe=${encodeURIComponent(vibe)}` : "/app";
@@ -259,7 +260,7 @@ function CheckoutContent() {
 
                   {discountAmountCents > 0 && (
                     <div className="flex items-center justify-between text-spotify-bright">
-                      <span>Réduction ({appliedDiscount?.code} · -{discountPercent}%)</span>
+                      <span>Réduction ({appliedCode} · -{discountPercent}%)</span>
                       <span>-{formatChf(discountAmountCents)}</span>
                     </div>
                   )}
@@ -285,7 +286,7 @@ function CheckoutContent() {
                       setPromoInput(e.target.value);
                       setPromoError(null);
                     }}
-                    placeholder="Ex : 123456"
+                    placeholder="Code d’autorisation"
                     className="h-11 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-soft placeholder:text-muted focus:border-spotify/50 focus:outline-none focus:ring-2 focus:ring-spotify/30"
                   />
                   <button
@@ -299,10 +300,10 @@ function CheckoutContent() {
                 </div>
 
                 {promoError && <p className="mt-2 text-xs text-red-300">{promoError}</p>}
-                {appliedDiscount?.valid && (
+                {appliedCode && (
                   <p className="mt-2 flex items-center gap-1.5 text-xs text-spotify-bright">
                     <CheckCircle2 className="size-3.5" />
-                    Code {appliedDiscount.code} appliqué : -{appliedDiscount.percent}%
+                    Code envoyé pour validation : {appliedCode}
                   </p>
                 )}
               </motion.section>

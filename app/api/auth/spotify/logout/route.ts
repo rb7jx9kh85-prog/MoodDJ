@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { clearTokenCookies } from "@/lib/cookies";
+import { getUidFromRequest } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-/** Clear Spotify cookies and return to the home page. */
-export async function GET() {
+/** Clear Spotify cookies for an authenticated Mood DJ user. */
+export async function POST(req: NextRequest) {
+  const uid = await getUidFromRequest(req);
+  if (!uid) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   await clearTokenCookies();
-  return NextResponse.redirect(appUrl);
+  return NextResponse.json({ ok: true });
 }

@@ -22,13 +22,13 @@ import {
   getUserQuota,
   canGenerate,
   canPushToSpotify,
-  recordGeneration,
-  isUsingBonusCredit,
-  consumeBonusCredit,
-  type UserQuota,
+  reserveGeneration,
+  refundGeneration,
 } from "@/lib/quota";
 import { recordPlaylistHistory } from "@/lib/playlist-history";
 import { recordPlaylistGenerated, activateReferralIfEligible } from "@/lib/referral";
+import { enforceRateLimit, RateLimitError } from "@/lib/rate-limit";
+import { getAdminAuth } from "@/lib/firebase-admin";
 
 // firebase-admin (via lib/quota) needs Node APIs, not the Edge runtime.
 export const runtime = "nodejs";
@@ -47,14 +47,8 @@ function errorResponse(message: string, code: ApiErrorCode, status: number) {
  */
 async function finalizeGeneration(
   uid: string,
-  quota: UserQuota,
   response: GeneratedPlaylistResponse
 ): Promise<void> {
-  await recordGeneration(uid);
-  if (isUsingBonusCredit(quota)) {
-    await consumeBonusCredit(uid);
-  }
-
   try {
     const { isFirstEver } = await recordPlaylistHistory(uid, response);
     await recordPlaylistGenerated(uid);
@@ -74,6 +68,24 @@ export async function POST(req: NextRequest) {
   const uid = await getUidFromRequest(req);
   if (!uid) {
     return errorResponse("Sign in to your Mood DJ account first.", "not_authenticated", 401);
+  }
+  const authUser = await getAdminAuth().getUser(uid);
+  if (!authUser.emailVerified) {
+    return NextResponse.json(
+      { error: "Verify your email before generating a playlist.", code: "email_not_verified" },
+      { status: 403 }
+    );
+  }
+  try {
+    await enforceRateLimit("generate", uid, 6, 60);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Too many generations. Please wait a moment.", code: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(err.retryAfterSeconds) } }
+      );
+    }
+    throw err;
   }
   const quota = await getUserQuota(uid);
   if (!canGenerate(quota)) {
@@ -123,7 +135,7 @@ export async function POST(req: NextRequest) {
   // write to it — generating a preview only needs an app-level token.
   let userAccessToken: string | null = null;
   if (pushToSpotify) {
-    userAccessToken = await getValidAccessToken();
+    userAccessToken = await getValidAccessToken(uid);
     if (!userAccessToken) {
       return errorResponse(
         "Connect your Spotify account first to push a playlist.",
@@ -133,14 +145,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 5. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
-  const uidTag = uid.slice(0, 6);
-  let plan;
+  const reservation = await reserveGeneration(uid);
+  if (!reservation) {
+    return errorResponse(
+      "You've used your free playlist. Upgrade to Flow for unlimited generation.",
+      "quota_exceeded",
+      403
+    );
+  }
+
+  let delivered = false;
   try {
-    plan = await generateMoodPlan(prompt, options);
-  } catch (err) {
+    // 5. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
+    const uidTag = uid.slice(0, 6);
+    let plan;
+    try {
+      plan = await generateMoodPlan(prompt, options);
+    } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    if (err instanceof OpenAIGenerationError) {
+      if (err instanceof OpenAIGenerationError) {
       // If OpenAI is simply not configured, surface a clear error; otherwise
       // degrade gracefully so the user still gets a playlist.
       if (!process.env.OPENAI_API_KEY) {
@@ -155,16 +178,16 @@ export async function POST(req: NextRequest) {
         reason,
       });
       plan = fallbackMoodPlan(prompt, options);
-    } else {
-      console.error("[/api/generate] Unexpected error building mood plan, using fallback plan", {
-        uid: uidTag,
-        reason,
-      });
-      plan = fallbackMoodPlan(prompt, options);
+      } else {
+        console.error("[/api/generate] Unexpected error building mood plan, using fallback plan", {
+          uid: uidTag,
+          reason,
+        });
+        plan = fallbackMoodPlan(prompt, options);
+      }
     }
-  }
 
-  try {
+    try {
     // 4. Search tracks across all queries and merge. A search-only request
     // uses the app's own Client Credentials token (no user involved at
     // all); a push request reuses the user's token since we'll need it
@@ -258,7 +281,8 @@ export async function POST(req: NextRequest) {
 
     if (!pushToSpotify || !userAccessToken) {
       const response: GeneratedPlaylistResponse = { ...base, pushedToSpotify: false };
-      await finalizeGeneration(uid, quota, response);
+      await finalizeGeneration(uid, response);
+      delivered = true;
       return NextResponse.json(response);
     }
 
@@ -302,14 +326,25 @@ export async function POST(req: NextRequest) {
       spotifyPlaylistUrl: playlist.url,
       playlistId: playlist.id,
     };
-    await finalizeGeneration(uid, quota, response);
+    await finalizeGeneration(uid, response);
+    delivered = true;
     return NextResponse.json(response);
-  } catch (err) {
-    return spotifyFailureResponse(err, {
-      route: "/api/generate",
-      uid,
-      fallbackCode: "spotify_playlist_create_failed",
-      fallbackMessage: "Spotify could not create the playlist right now. Please try again.",
-    });
+    } catch (err) {
+      return spotifyFailureResponse(err, {
+        route: "/api/generate",
+        uid,
+        fallbackCode: "spotify_playlist_create_failed",
+        fallbackMessage: "Spotify could not create the playlist right now. Please try again.",
+      });
+    }
+  } finally {
+    if (!delivered) {
+      await refundGeneration(uid, reservation).catch((err) => {
+        console.error("[/api/generate] Reservation refund failed", {
+          uid: uid.slice(0, 6),
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
   }
 }

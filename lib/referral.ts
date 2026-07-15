@@ -1,4 +1,5 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { randomInt } from "crypto";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import type {
   UserReferralProfile,
@@ -16,7 +17,7 @@ const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function randomCode(length = 6): string {
   let out = "";
   for (let i = 0; i < length; i++) {
-    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    out += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   }
   return out;
 }
@@ -145,39 +146,40 @@ export async function ensureReferralProfile(uid: string): Promise<UserReferralPr
   const existing = await ref.get();
   if (existing.exists) return existing.data() as UserReferralProfile;
 
-  let code = generateReferralCode();
   for (let attempt = 0; attempt < 5; attempt++) {
-    const collision = await db
-      .collection("referralProfiles")
-      .where("referralCode", "==", code)
-      .limit(1)
-      .get();
-    if (collision.empty) break;
-    code = generateReferralCode();
+    const code = generateReferralCode();
+    const codeRef = db.collection("referralCodes").doc(code);
+    try {
+      await db.runTransaction(async (tx) => {
+        const [profileSnap, codeSnap] = await Promise.all([tx.get(ref), tx.get(codeRef)]);
+        if (profileSnap.exists) return;
+        if (codeSnap.exists) throw new Error("referral_code_collision");
+        tx.create(codeRef, { uid, createdAt: FieldValue.serverTimestamp() });
+        tx.create(ref, {
+          uid,
+          referralCode: code,
+          referredByUid: null,
+          referredByCode: null,
+          tier: "explorer",
+          tierAchievedAt: { explorer: FieldValue.serverTimestamp(), creator: null, ambassador: null },
+          totalReferralsSent: 0,
+          totalReferralsActivated: 0,
+          playlistsGenerated: 0,
+          sharesCount: 0,
+          creditsBalance: 0,
+          lifetimeCreditsEarned: 0,
+          refereeBonusClaimed: false,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+      const created = await ref.get();
+      if (created.exists) return created.data() as UserReferralProfile;
+    } catch (err) {
+      if ((err as Error).message !== "referral_code_collision") throw err;
+    }
   }
-
-  await ref.set(
-    {
-      uid,
-      referralCode: code,
-      referredByUid: null,
-      referredByCode: null,
-      tier: "explorer",
-      tierAchievedAt: { explorer: FieldValue.serverTimestamp(), creator: null, ambassador: null },
-      totalReferralsSent: 0,
-      totalReferralsActivated: 0,
-      playlistsGenerated: 0,
-      sharesCount: 0,
-      creditsBalance: 0,
-      lifetimeCreditsEarned: 0,
-      refereeBonusClaimed: false,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
-  const created = await ref.get();
-  return created.data() as UserReferralProfile;
+  throw new Error("Could not allocate a unique referral code");
 }
 
 /**
@@ -189,9 +191,7 @@ export async function linkReferral(refereeUid: string, rawCode: string | null): 
   const db = getAdminDb();
   await ensureReferralProfile(refereeUid);
   const refereeProfileRef = db.collection("referralProfiles").doc(refereeUid);
-  const refereeProfile = (await refereeProfileRef.get()).data() as UserReferralProfile;
-
-  if (!rawCode || refereeProfile.referredByUid) return;
+  if (!rawCode) return;
 
   const code = rawCode.trim().toUpperCase();
   const referrerQuery = await db
@@ -206,37 +206,40 @@ export async function linkReferral(refereeUid: string, rawCode: string | null): 
   if (referrerUid === refereeUid) return;
 
   const referralRef = db.collection("referrals").doc(refereeUid);
-  if ((await referralRef.get()).exists) return;
-
   const refereeAuthUser = await getAdminAuth().getUser(refereeUid);
   const fraudFlags = isDisposableEmail(refereeAuthUser.email) ? (["disposable_email"] as const) : [];
 
-  const batch = db.batch();
-  batch.set(referralRef, {
-    id: refereeUid,
-    referrerUid,
-    referrerCode: code,
-    refereeUid,
-    status: "signed_up",
-    source: "link",
-    signedUpAt: FieldValue.serverTimestamp(),
-    verifiedAt: null,
-    activatedAt: null,
-    rewardedAt: null,
-    fraudFlags,
-    rewardGrantedToReferrer: null,
+  await db.runTransaction(async (tx) => {
+    const [referralSnap, profileSnap] = await Promise.all([
+      tx.get(referralRef),
+      tx.get(refereeProfileRef),
+    ]);
+    if (referralSnap.exists || profileSnap.data()?.referredByUid) return;
+    tx.create(referralRef, {
+      id: refereeUid,
+      referrerUid,
+      referrerCode: code,
+      refereeUid,
+      status: "signed_up",
+      source: "link",
+      signedUpAt: FieldValue.serverTimestamp(),
+      verifiedAt: null,
+      activatedAt: null,
+      rewardedAt: null,
+      fraudFlags,
+      rewardGrantedToReferrer: null,
+    });
+    tx.set(
+      refereeProfileRef,
+      { referredByUid: referrerUid, referredByCode: code, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+    tx.set(
+      referrerDoc.ref,
+      { totalReferralsSent: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
   });
-  batch.set(
-    refereeProfileRef,
-    { referredByUid: referrerUid, referredByCode: code, updatedAt: FieldValue.serverTimestamp() },
-    { merge: true }
-  );
-  batch.set(
-    referrerDoc.ref,
-    { totalReferralsSent: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
-    { merge: true }
-  );
-  await batch.commit();
 }
 
 /**
@@ -253,7 +256,7 @@ export async function claimRefereeVerifiedBonus(uid: string): Promise<{ granted:
   const referralRef = db.collection("referrals").doc(uid);
   const profileRef = db.collection("referralProfiles").doc(uid);
   const userRef = db.collection("users").doc(uid);
-  const ledgerRef = db.collection("rewardLedger").doc();
+  const ledgerRef = db.collection("rewardLedger").doc(`verified_${uid}`);
 
   return db.runTransaction(async (tx) => {
     const [referralSnap, profileSnap] = await Promise.all([tx.get(referralRef), tx.get(profileRef)]);
@@ -306,21 +309,23 @@ export async function claimRefereeVerifiedBonus(uid: string): Promise<{ granted:
 export async function activateReferralIfEligible(refereeUid: string): Promise<void> {
   const db = getAdminDb();
   const referralRef = db.collection("referrals").doc(refereeUid);
-  const referralSnap = await referralRef.get();
-  if (!referralSnap.exists) return;
-
-  const referral = referralSnap.data() as Referral;
-  if (referral.status === "rewarded" || referral.status === "rejected") return;
-  if (referral.fraudFlags.length > 0) return;
 
   const refereeAuthUser = await getAdminAuth().getUser(refereeUid);
   if (!refereeAuthUser.emailVerified) return;
 
-  const referrerProfileRef = db.collection("referralProfiles").doc(referral.referrerUid);
-  const referrerUserRef = db.collection("users").doc(referral.referrerUid);
-  const ledgerRef = db.collection("rewardLedger").doc();
-
   await db.runTransaction(async (tx) => {
+    const referralSnap = await tx.get(referralRef);
+    if (!referralSnap.exists) return;
+    const referral = referralSnap.data() as Referral;
+    if (
+      referral.status === "rewarded" ||
+      referral.status === "rejected" ||
+      referral.fraudFlags.length > 0
+    ) return;
+
+    const referrerProfileRef = db.collection("referralProfiles").doc(referral.referrerUid);
+    const referrerUserRef = db.collection("users").doc(referral.referrerUid);
+    const ledgerRef = db.collection("rewardLedger").doc(`referral_${referral.id}`);
     const referrerProfileSnap = await tx.get(referrerProfileRef);
     if (!referrerProfileSnap.exists) return;
     const referrerProfile = referrerProfileSnap.data() as UserReferralProfile;
@@ -374,43 +379,45 @@ export async function activateReferralIfEligible(refereeUid: string): Promise<vo
 export async function recordPlaylistGenerated(uid: string): Promise<void> {
   const db = getAdminDb();
   const profileRef = db.collection("referralProfiles").doc(uid);
-  const snap = await profileRef.get();
-  if (!snap.exists) return;
-  const profile = snap.data() as UserReferralProfile;
-  const nextTier = computeEligibleTier({
-    ...profile,
-    playlistsGenerated: profile.playlistsGenerated + 1,
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(profileRef);
+    if (!snap.exists) return;
+    const profile = snap.data() as UserReferralProfile;
+    const nextTier = computeEligibleTier({
+      ...profile,
+      playlistsGenerated: profile.playlistsGenerated + 1,
+    });
+    tx.set(
+      profileRef,
+      {
+        playlistsGenerated: FieldValue.increment(1),
+        updatedAt: FieldValue.serverTimestamp(),
+        ...tierUpdateFields(profile, nextTier),
+      },
+      { merge: true }
+    );
   });
-  await profileRef.set(
-    {
-      playlistsGenerated: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-      ...tierUpdateFields(profile, nextTier),
-    },
-    { merge: true }
-  );
 }
 
 /** Increments the share counter (Web Share / copy-link success) used for the Creator tier shortcut. */
 export async function recordShare(uid: string): Promise<void> {
   const db = getAdminDb();
   const profileRef = db.collection("referralProfiles").doc(uid);
-  const snap = await profileRef.get();
-  if (!snap.exists) return;
-  const profile = snap.data() as UserReferralProfile;
-  const nextTier = computeEligibleTier({
-    ...profile,
-    sharesCount: profile.sharesCount + 1,
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(profileRef);
+    if (!snap.exists) return;
+    const profile = snap.data() as UserReferralProfile;
+    const nextTier = computeEligibleTier({ ...profile, sharesCount: profile.sharesCount + 1 });
+    tx.set(
+      profileRef,
+      {
+        sharesCount: FieldValue.increment(1),
+        updatedAt: FieldValue.serverTimestamp(),
+        ...tierUpdateFields(profile, nextTier),
+      },
+      { merge: true }
+    );
   });
-  await profileRef.set(
-    {
-      totalReferralsSent: FieldValue.increment(0), // no-op, kept for schema symmetry
-      sharesCount: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-      ...tierUpdateFields(profile, nextTier),
-    },
-    { merge: true }
-  );
 }
 
 // ── Friends leaderboard (computed live — no scheduled job for this MVP) ─────

@@ -9,16 +9,16 @@ type DiscountCodeDefinition = {
 
 /**
  * Centralised discount-code catalog. The server is the only party that ever
- * decides whether a code is valid and what it's worth — the client may reuse
- * `resolveDiscountCode` for an instant preview, but the checkout API route
- * always recomputes this itself rather than trusting anything sent by the
- * browser.
+ * decides whether a code is valid and what it's worth. This module must stay
+ * server-only in practice: the checkout UI submits a candidate without
+ * importing the invitation catalog.
  */
 const DISCOUNT_CODES: DiscountCodeDefinition[] = [
-  { code: "123456", percent: 100, plans: "all" },
+  { code: "AMBASSADEUR", percent: 100, plans: "all" },
+  { code: "ADMIN", percent: 100, plans: "all" },
 ];
 
-/** Trim, uppercase, and strip internal whitespace so "12 34 56" === "123456". */
+/** Trim, uppercase, and strip internal whitespace before matching. */
 export function normalizeDiscountCode(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, "");
 }

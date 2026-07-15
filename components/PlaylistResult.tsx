@@ -77,7 +77,11 @@ export default function PlaylistResult({
     setLoadingPlaylists(true);
     setPlaylistsError(null);
     try {
-      const res = await fetch("/api/spotify/playlists");
+      if (!user) throw new Error("Not authenticated");
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/spotify/playlists", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
       if (res.ok) {
         const json = (await res.json()) as { playlists: OwnedPlaylist[] };
         setOwnedPlaylists(json.playlists);

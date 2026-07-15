@@ -5,6 +5,7 @@ import {
   setTokenCookies,
   updateAccessTokenCookie,
   clearTokenCookies,
+  readTokenOwner,
 } from "@/lib/cookies";
 import {
   refreshSpotifyToken,
@@ -32,7 +33,9 @@ export async function withFreshToken<T>(
     if (!refresh) throw err;
     const refreshed = await refreshSpotifyToken(refresh);
     if (refreshed.refreshToken) {
-      await setTokenCookies(refreshed.accessToken, refreshed.refreshToken, refreshed.expiresIn);
+      const ownerUid = await readTokenOwner();
+      if (!ownerUid) throw err;
+      await setTokenCookies(refreshed.accessToken, refreshed.refreshToken, refreshed.expiresIn, ownerUid);
     } else {
       await updateAccessTokenCookie(refreshed.accessToken, refreshed.expiresIn);
     }

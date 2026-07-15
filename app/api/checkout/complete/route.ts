@@ -4,6 +4,7 @@ import { getUidFromRequest } from "@/lib/quota";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { isSelectablePlan, PLAN_CATALOG, type SelectablePlan } from "@/lib/plans";
 import { resolveDiscountCode } from "@/lib/discount-codes";
+import { enforceRateLimit, RateLimitError } from "@/lib/rate-limit";
 
 // firebase-admin needs Node APIs, not the Edge runtime.
 export const runtime = "nodejs";
@@ -38,6 +39,17 @@ export async function POST(req: NextRequest) {
   if (!uid) {
     return errorResponse("not_authenticated", 401);
   }
+  try {
+    await enforceRateLimit("checkout", uid, 10, 60);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Trop de tentatives. Réessaie dans un instant." },
+        { status: 429, headers: { "Retry-After": String(err.retryAfterSeconds) } }
+      );
+    }
+    throw err;
+  }
 
   let body: unknown;
   try {
@@ -59,12 +71,18 @@ export async function POST(req: NextRequest) {
   const rawDiscountCode = typeof discountCode === "string" ? discountCode : null;
   const discount = resolveDiscountCode(rawDiscountCode, plan);
 
+  // Mood DJ is invite-only while real billing is unavailable. Never activate
+  // a plan from card-shaped data supplied by the browser: only a server-side
+  // invitation-code match is authoritative.
+  if (!discount.valid || discount.percent !== 100) {
+    return errorResponse("Vous n’êtes pas autorisé à utiliser le service.", 403);
+  }
+
   const originalPriceCents = catalogEntry.priceCents;
-  const discountPercent = discount.valid ? discount.percent : 0;
+  const discountPercent = discount.percent;
   const discountAmountCents = Math.round((originalPriceCents * discountPercent) / 100);
   const finalPriceCents = Math.max(0, originalPriceCents - discountAmountCents);
-  const paymentStatus: CheckoutCompleteResponse["paymentStatus"] =
-    finalPriceCents === 0 ? "simulated_free" : "simulated_paid";
+  const paymentStatus: CheckoutCompleteResponse["paymentStatus"] = "simulated_free";
 
   try {
     await getAdminDb()
@@ -83,7 +101,7 @@ export async function POST(req: NextRequest) {
           originalPriceCents,
           discountAmountCents,
           finalPriceCents,
-          discountCode: discount.valid ? discount.code : null,
+          discountCode: discount.code,
           discountPercent,
           checkoutUpdatedAt: FieldValue.serverTimestamp(),
         },
@@ -101,7 +119,7 @@ export async function POST(req: NextRequest) {
     discountAmountCents,
     finalPriceCents,
     discountPercent,
-    discountCode: discount.valid ? discount.code : null,
+    discountCode: discount.code,
     paymentStatus,
   };
   return NextResponse.json(response);

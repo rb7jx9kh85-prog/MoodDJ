@@ -12,6 +12,10 @@ export type UserQuota = {
   bonusGenerationCredits: number;
 };
 
+export type GenerationReservation = {
+  usedBonusCredit: boolean;
+};
+
 /** Verifies the Firebase ID token sent as `Authorization: Bearer <token>`. Returns null if missing/invalid. */
 export async function getUidFromRequest(req: NextRequest): Promise<string | null> {
   const header = req.headers.get("authorization") ?? "";
@@ -67,6 +71,75 @@ export async function consumeBonusCredit(uid: string): Promise<void> {
     .collection("users")
     .doc(uid)
     .set({ bonusGenerationCredits: FieldValue.increment(-1) }, { merge: true });
+}
+
+/**
+ * Atomically checks and reserves one generation before any paid API call.
+ * This closes the parallel-request race present in read-then-increment flows.
+ */
+export async function reserveGeneration(uid: string): Promise<GenerationReservation | null> {
+  const db = getAdminDb();
+  const userRef = db.collection("users").doc(uid);
+  const profileRef = db.collection("referralProfiles").doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const [userSnap, profileSnap] = await Promise.all([tx.get(userRef), tx.get(profileRef)]);
+    const data = userSnap.data() ?? {};
+    const plan = normalizePlan(data.plan);
+    const generationsUsed = typeof data.generationsUsed === "number" ? data.generationsUsed : 0;
+    const bonusCredits =
+      typeof data.bonusGenerationCredits === "number" ? data.bonusGenerationCredits : 0;
+    const usedBonusCredit = plan === "free" && generationsUsed >= 1;
+
+    if (plan === "free" && generationsUsed >= 1 && bonusCredits <= 0) return null;
+
+    tx.set(
+      userRef,
+      {
+        generationsUsed: FieldValue.increment(1),
+        lastGeneratedAt: FieldValue.serverTimestamp(),
+        ...(usedBonusCredit
+          ? { bonusGenerationCredits: FieldValue.increment(-1) }
+          : {}),
+      },
+      { merge: true }
+    );
+    if (usedBonusCredit && profileSnap.exists) {
+      tx.set(
+        profileRef,
+        { creditsBalance: FieldValue.increment(-1), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    }
+    return { usedBonusCredit };
+  });
+}
+
+/** Refunds a reservation when generation fails before a usable response. */
+export async function refundGeneration(uid: string, reservation: GenerationReservation): Promise<void> {
+  const db = getAdminDb();
+  const userRef = db.collection("users").doc(uid);
+  const profileRef = db.collection("referralProfiles").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const profileSnap = reservation.usedBonusCredit ? await tx.get(profileRef) : null;
+    tx.set(
+      userRef,
+      {
+        generationsUsed: FieldValue.increment(-1),
+        ...(reservation.usedBonusCredit
+          ? { bonusGenerationCredits: FieldValue.increment(1) }
+          : {}),
+      },
+      { merge: true }
+    );
+    if (reservation.usedBonusCredit && profileSnap?.exists) {
+      tx.set(
+        profileRef,
+        { creditsBalance: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    }
+  });
 }
 
 /** Flow Sync and Lifetime can push to Spotify (create or update a playlist there). */
