@@ -94,7 +94,7 @@ export default function PlanGate({
 
   if (!checked || !profileChecked || !authorized) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+      <main className="flex min-h-dvh items-center justify-center bg-black text-white">
         <div className="text-center">
           <div className="mx-auto size-10 animate-spin rounded-full border-2 border-white/20 border-t-[#1ed760]" />
 
