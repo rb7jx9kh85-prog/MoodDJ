@@ -43,6 +43,7 @@ export async function recordPlaylistHistory(
     })),
     pushedToSpotify: data.pushedToSpotify,
     spotifyPlaylistUrl: data.spotifyPlaylistUrl ?? null,
+    coverImageUrl: data.coverImageUrl ?? null,
     createdAt: FieldValue.serverTimestamp(),
   });
 

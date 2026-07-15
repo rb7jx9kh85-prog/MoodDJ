@@ -86,6 +86,7 @@ export interface PlaylistHistoryEntry {
   }>;
   pushedToSpotify: boolean;
   spotifyPlaylistUrl: string | null;
+  coverImageUrl: string | null;
   createdAt: Timestamp;
 }
 

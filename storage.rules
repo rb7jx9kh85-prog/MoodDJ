@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Paste this into Firebase Console -> Storage -> Rules (this repo has no
+// firebase.json/CLI wiring to deploy it automatically — same as firestore.rules).
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // AI-generated playlist covers (lib/cover-art.ts). Publicly readable —
+    // they're shown in shared playlist links and have no sensitive content.
+    // Written exclusively by the Admin SDK (bypasses these rules entirely),
+    // never from the client.
+    match /covers/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

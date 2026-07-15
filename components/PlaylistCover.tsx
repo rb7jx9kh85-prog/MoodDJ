@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import LogoMark from "./LogoMark";
 
 /** Deterministically pick a gradient from the vibe text so each cover feels unique. */
@@ -20,12 +21,23 @@ function gradientFor(seed: string): [string, string] {
 export default function PlaylistCover({
   name,
   vibe,
+  imageUrl,
   className,
 }: {
   name: string;
   vibe: string;
+  /** AI-generated cover (lib/cover-art.ts) — shown instead of the gradient when present. */
+  imageUrl?: string | null;
   className?: string;
 }) {
+  if (imageUrl) {
+    return (
+      <div className={`relative aspect-square overflow-hidden rounded-3xl ${className ?? ""}`}>
+        <Image src={imageUrl} alt={name} fill sizes="220px" className="object-cover" />
+      </div>
+    );
+  }
+
   const [from, to] = gradientFor(vibe || name);
 
   return (

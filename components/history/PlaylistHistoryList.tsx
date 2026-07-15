@@ -56,7 +56,7 @@ export default function PlaylistHistoryList() {
           className="glass-card flex gap-4 rounded-3xl p-4"
         >
           <div className="w-20 shrink-0">
-            <PlaylistCover name={p.playlistName} vibe={p.vibe} />
+            <PlaylistCover name={p.playlistName} vibe={p.vibe} imageUrl={p.coverImageUrl} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-soft">{p.playlistName}</p>
