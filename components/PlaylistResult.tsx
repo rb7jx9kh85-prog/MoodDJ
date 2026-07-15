@@ -116,7 +116,7 @@ export default function PlaylistResult({
       <div className="grid gap-6 md:grid-cols-[220px_1fr]">
         {/* Cover + meta */}
         <div>
-          <PlaylistCover name={data.playlistName} vibe={data.vibe} />
+          <PlaylistCover name={data.playlistName} vibe={data.vibe} imageUrl={data.coverImageUrl} />
         </div>
 
         <div className="flex flex-col">

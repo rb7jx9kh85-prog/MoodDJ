@@ -5,7 +5,9 @@ import {
   createPlaylist,
   addTracksToPlaylist,
   replacePlaylistTracks,
+  setPlaylistCoverImage,
 } from "@/lib/spotify";
+import { fetchImageAsBuffer, toSpotifySafeJpegBase64 } from "@/lib/cover-art";
 import { withFreshToken, spotifyFailureResponse, errorJson } from "@/lib/spotify-session";
 import { sanitizePrompt } from "@/lib/utils";
 import { getUidFromRequest, getUserQuota, canPushToSpotify } from "@/lib/quota";
@@ -53,17 +55,19 @@ export async function POST(req: NextRequest) {
     return errorJson("Invalid request.", "invalid_tracks", 400);
   }
 
-  const { playlistName, playlistDescription, trackUris, existingPlaylistId } = body as {
+  const { playlistName, playlistDescription, trackUris, existingPlaylistId, coverImageUrl } = body as {
     playlistName?: unknown;
     playlistDescription?: unknown;
     trackUris?: unknown;
     existingPlaylistId?: unknown;
+    coverImageUrl?: unknown;
   };
 
   const name = sanitizePrompt(playlistName).slice(0, 100) || "Mood DJ Playlist";
   const description = typeof playlistDescription === "string" ? playlistDescription.slice(0, 300) : "";
   const targetPlaylistId =
     typeof existingPlaylistId === "string" && existingPlaylistId ? existingPlaylistId : null;
+  const coverUrl = typeof coverImageUrl === "string" && coverImageUrl ? coverImageUrl : null;
 
   // Only well-formed track URIs may reach Spotify (IDs alone are rejected).
   const rawUris = Array.isArray(trackUris) ? trackUris : [];
@@ -119,6 +123,24 @@ export async function POST(req: NextRequest) {
       }
       playlistId = playlist.id;
       playlistUrl = playlist.url;
+    }
+
+    // Best-effort: the playlist (create or update) already succeeded
+    // without this. Fails silently (missing ugc-image-upload scope until
+    // reconnect, transient error, ...) rather than breaking the push.
+    if (coverUrl) {
+      try {
+        const pngBuffer = await fetchImageAsBuffer(coverUrl);
+        if (pngBuffer) {
+          const jpegBase64 = await toSpotifySafeJpegBase64(pngBuffer);
+          await withFreshToken(accessToken, (t) => setPlaylistCoverImage(t, playlistId, jpegBase64));
+        }
+      } catch (err) {
+        console.error("[/api/push-to-spotify] Failed to set Spotify cover image", {
+          uid: uidTag,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     console.log("[/api/push-to-spotify] done", {

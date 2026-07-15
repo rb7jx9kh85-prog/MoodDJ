@@ -21,6 +21,11 @@ export const SPOTIFY_SCOPES = [
   "playlist-modify-private",
   "user-read-private",
   "user-read-email",
+  // Lets us set the AI-generated cover image on a pushed playlist
+  // (lib/cover-art.ts). Missing this scope just skips the cover upload
+  // (spotifyFailureResponse/callers treat it as best-effort), it never
+  // blocks creating the playlist itself.
+  "ugc-image-upload",
 ].join(" ");
 
 /**

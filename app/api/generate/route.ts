@@ -1,10 +1,13 @@
+import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type { GeneratedPlaylistResponse, Track, ApiErrorCode } from "@/types";
 import { getValidAccessToken } from "@/lib/auth";
+import { generateCoverArt, toSpotifySafeJpegBase64 } from "@/lib/cover-art";
 import {
   searchTracks,
   createPlaylist,
   addTracksToPlaylist,
+  setPlaylistCoverImage,
   getAppAccessToken,
   applyHardFilters,
   curateTracks,
@@ -179,18 +182,24 @@ export async function POST(req: NextRequest) {
     // More search queries (up to 16, per the system prompt) make up for the
     // lower per-query ceiling.
     const perQuery = MAX_SEARCH_LIMIT;
-    const results = await Promise.all(
-      plan.searchQueries.map((q) =>
-        searchWith(q, perQuery).catch((err) => {
-          console.error("[/api/generate] search query failed", {
-            uid: uidTag,
-            query: q,
-            reason: err instanceof Error ? err.message : String(err),
-          });
-          return [] as Track[];
-        })
-      )
-    );
+    // Cover art runs alongside the Spotify searches (not after) so it adds
+    // no perceived latency — generated for every playlist, preview or not.
+    const coverId = randomUUID();
+    const [results, cover] = await Promise.all([
+      Promise.all(
+        plan.searchQueries.map((q) =>
+          searchWith(q, perQuery).catch((err) => {
+            console.error("[/api/generate] search query failed", {
+              uid: uidTag,
+              query: q,
+              reason: err instanceof Error ? err.message : String(err),
+            });
+            return [] as Track[];
+          })
+        )
+      ),
+      generateCoverArt(uid, coverId, plan),
+    ]);
 
     // Dedupe by URI while remembering each track's best (lowest) rank within
     // its own query's results — Spotify already ranks search hits by
@@ -244,6 +253,7 @@ export async function POST(req: NextRequest) {
       genres: plan.genres,
       transitionLogic: plan.transitionLogic,
       tracks: selected,
+      ...(cover ? { coverImageUrl: cover.url } : {}),
     };
 
     if (!pushToSpotify || !userAccessToken) {
@@ -269,6 +279,21 @@ export async function POST(req: NextRequest) {
         fallbackMessage:
           "Your playlist was created but tracks could not be added. Please try again.",
       });
+    }
+
+    // Best-effort: the playlist + tracks are already a success without this.
+    // Fails silently (e.g. the user hasn't reconnected Spotify to grant the
+    // newly-added ugc-image-upload scope yet) rather than breaking the push.
+    if (cover) {
+      try {
+        const jpegBase64 = await toSpotifySafeJpegBase64(cover.pngBuffer);
+        await withFreshToken(userAccessToken, (t) => setPlaylistCoverImage(t, playlist.id, jpegBase64));
+      } catch (err) {
+        console.error("[/api/generate] Failed to set Spotify cover image", {
+          uid: uidTag,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     const response: GeneratedPlaylistResponse = {

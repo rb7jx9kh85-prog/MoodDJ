@@ -1,10 +1,12 @@
 import { getApps, getApp, initializeApp, cert, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getStorage, type Storage } from "firebase-admin/storage";
 
 let app: App | undefined;
 let authInstance: Auth | undefined;
 let dbInstance: Firestore | undefined;
+let storageInstance: Storage | undefined;
 
 /**
  * Server-only Firebase Admin init, lazy for the same reason as
@@ -29,6 +31,7 @@ function getAdminApp(): App {
 
   app = initializeApp({
     credential: cert({ projectId, clientEmail, privateKey }),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
   return app;
 }
@@ -41,4 +44,9 @@ export function getAdminAuth(): Auth {
 export function getAdminDb(): Firestore {
   if (!dbInstance) dbInstance = getFirestore(getAdminApp());
   return dbInstance;
+}
+
+export function getAdminStorage(): Storage {
+  if (!storageInstance) storageInstance = getStorage(getAdminApp());
+  return storageInstance;
 }

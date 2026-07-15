@@ -172,6 +172,8 @@ export type GeneratedPlaylistResponse = {
   pushedToSpotify: boolean;
   spotifyPlaylistUrl?: string;
   playlistId?: string;
+  /** AI-generated cover art (Firebase Storage URL) — absent if generation failed or is disabled; the UI falls back to a gradient cover. */
+  coverImageUrl?: string;
 };
 
 /** Payload returned by /api/push-to-spotify on success. */

@@ -300,6 +300,30 @@ export async function replacePlaylistTracks(
   }
 }
 
+/**
+ * Sets a playlist's cover image (our AI-generated art). Requires the
+ * `ugc-image-upload` scope — already-connected users must reconnect Spotify
+ * to grant it; until then this throws SpotifyApiError(403, insufficient
+ * scope), which callers treat as best-effort and swallow.
+ *
+ * `base64Jpeg` must be JPEG data, ≤256KB once base64-encoded (Spotify's
+ * hard limit — see lib/cover-art.ts's toSpotifySafeJpegBase64).
+ */
+export async function setPlaylistCoverImage(
+  accessToken: string,
+  playlistId: string,
+  base64Jpeg: string
+): Promise<void> {
+  const res = await spotifyFetch(accessToken, `/playlists/${playlistId}/images`, {
+    method: "PUT",
+    headers: { "Content-Type": "image/jpeg" },
+    body: base64Jpeg,
+  });
+  if (!res.ok) {
+    throw await toApiError(res, "Could not set playlist cover image");
+  }
+}
+
 const LIVE_PATTERN = /\(live[^)]*\)|\blive at\b|\blive from\b|\blive in\b/i;
 const REMIX_PATTERN = /\bremix\b|\bre-?edit\b|\bmashup\b/i;
 const COVER_PATTERN = /\bcover\b|tribute to|as made famous by|karaoke/i;
