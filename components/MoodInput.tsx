@@ -59,7 +59,15 @@ export default function MoodInput({
         />
 
         <div className="flex flex-col gap-3 px-3 pb-1 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-xs text-muted/70">
+          <span
+            className={`text-xs tabular-nums transition-colors duration-300 ${
+              remaining <= 50
+                ? "text-amber-400/90"
+                : remaining <= 200
+                  ? "text-muted"
+                  : "text-muted/70"
+            }`}
+          >
             {remaining} {t.app.charsLeft}
           </span>
 
@@ -108,15 +116,19 @@ export default function MoodInput({
 
       {/* Example vibes */}
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        {EXAMPLES.map((example) => (
-          <button
+        {EXAMPLES.map((example, i) => (
+          <motion.button
             key={example}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => onChange(example)}
             disabled={loading}
             className="hover-lift rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-muted transition-colors hover:text-soft disabled:opacity-50"
           >
             {example}
-          </button>
+          </motion.button>
         ))}
       </div>
     </motion.div>

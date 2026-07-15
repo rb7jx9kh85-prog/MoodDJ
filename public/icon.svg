@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="112" y1="80" x2="400" y2="432" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1ED760"/>
+      <stop offset="1" stop-color="#1DB954"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.6">
+      <stop offset="0" stop-color="#1DB954" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#1DB954" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Dark rounded background -->
+  <rect width="512" height="512" rx="112" fill="#0A0A0A"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+
+  <!-- Mark scaled from the 64-unit design (x8, centred) -->
+  <g transform="translate(0,0)">
+    <!-- Broken ring -->
+    <circle cx="256" cy="256" r="224" stroke="url(#grad)" stroke-width="24"
+            stroke-linecap="round" stroke-dasharray="1168 240"
+            transform="rotate(125 256 256)"/>
+
+    <!-- Equalizer bars -->
+    <g fill="url(#grad)">
+      <rect x="136" y="212" width="25.6" height="88" rx="12.8"/>
+      <rect x="184" y="168" width="25.6" height="176" rx="12.8"/>
+      <rect x="232" y="196" width="25.6" height="120" rx="12.8"/>
+    </g>
+
+    <!-- Music note -->
+    <g fill="url(#grad)">
+      <rect x="323.2" y="144" width="24.8" height="180" rx="12.4"/>
+      <path d="M348 147.2c36.8 8 59.2 32 59.2 62.4 0 13.6-4 24-10.4 32 2.4-6.4 3.2-12.8 3.2-19.2 0-26.4-20.8-44.8-52-51.2z"/>
+      <ellipse cx="307.2" cy="332.8" rx="48.8" ry="37.6" transform="rotate(-20 307.2 332.8)"/>
+    </g>
+  </g>
+</svg>
