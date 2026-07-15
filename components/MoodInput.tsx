@@ -55,6 +55,19 @@ export default function MoodInput({
           placeholder={t.app.generatePlaceholder}
           rows={3}
           maxLength={MAX_PROMPT_LENGTH}
+          // iOS Safari otherwise displays its floating text-selection/form
+          // toolbar over the controls while the mood field is focused. The
+          // field remains editable; only long-press selection/callouts are
+          // disabled because the prompt is a transient generation input.
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="done"
+          style={{
+            WebkitUserSelect: "none",
+            userSelect: "none",
+            WebkitTouchCallout: "none",
+          }}
           className="w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-base text-soft placeholder:text-muted/60 focus:outline-none sm:text-lg"
         />
 
