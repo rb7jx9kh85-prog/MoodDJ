@@ -31,3 +31,12 @@ export const staggerContainer: Variants = {
     transition: { staggerChildren: 0.06, delayChildren: 0.1 },
   },
 };
+
+/** Snappy spring used for toggles, knobs and other small state changes. */
+export const springSnappy = { type: "spring", stiffness: 500, damping: 32 } as const;
+
+/** Tiny scale pop for value badges when their content changes. */
+export const badgePop: Variants = {
+  hidden: { opacity: 0, scale: 0.85 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.18, ease: "easeOut" } },
+};

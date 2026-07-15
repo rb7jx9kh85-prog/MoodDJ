@@ -36,9 +36,32 @@ async function ico(size, outPath) {
   console.log("wrote", outPath, `${size}x${size} ico`);
 }
 
+/**
+ * Maskable icon: Android crops maskable icons to a circle covering ~80% of
+ * the canvas, so the full-bleed art (whose ring nearly touches the edges)
+ * would get clipped. Render the mark at 76% on the brand's dark background.
+ */
+async function maskable(size, outPath) {
+  const inner = Math.round(size * 0.76);
+  const offset = Math.round((size - inner) / 2);
+  const art = await sharp(svg).resize(inner, inner).png().toBuffer();
+  await sharp({
+    create: { width: size, height: size, channels: 4, background: "#0A0A0A" },
+  })
+    .composite([{ input: art, top: offset, left: offset }])
+    .png()
+    .toFile(join(root, outPath));
+  console.log("wrote", outPath, `${size}x${size} maskable`);
+}
+
 await png(192, "public/icons/icon-192.png");
 await png(512, "public/icons/icon-512.png");
 await png(180, "public/apple-touch-icon.png");
 await ico(48, "public/favicon.ico");
+await maskable(512, "public/icons/icon-512-maskable.png");
+
+// SVG favicon: served as-is for browsers that support it (crisp at any size).
+writeFileSync(join(root, "public", "icon.svg"), svg);
+console.log("wrote public/icon.svg");
 
 console.log("All icons generated.");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import LogoMark from "@/components/LogoMark";
 import Magnetic from "@/components/marketing/Magnetic";
@@ -11,6 +12,7 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 export default function MarketingHeader() {
   const { t } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
   const links = [
     { name: t.nav.features, href: "#benefits" },
@@ -38,10 +40,25 @@ export default function MarketingHeader() {
           <span className="text-base font-semibold tracking-tight text-soft">Mood DJ</span>
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
+        <nav
+          className="hidden items-center gap-7 text-sm text-muted md:flex"
+          onMouseLeave={() => setHoveredLink(null)}
+        >
           {links.map((l) => (
-            <Link key={l.name} href={l.href} className="transition-colors hover:text-soft">
+            <Link
+              key={l.name}
+              href={l.href}
+              onMouseEnter={() => setHoveredLink(l.name)}
+              className="relative py-1 transition-colors hover:text-soft"
+            >
               {l.name}
+              {hoveredLink === l.name && (
+                <motion.span
+                  layoutId="nav-underline"
+                  className="absolute inset-x-0 -bottom-0.5 h-px bg-gradient-to-r from-spotify to-spotify-bright"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              )}
             </Link>
           ))}
         </nav>

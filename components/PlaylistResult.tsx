@@ -1,11 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence, animate, useReducedMotion } from "framer-motion";
 import type { ApiError, GeneratedPlaylistResponse, OwnedPlaylist } from "@/types";
 import { blurReveal, staggerContainer } from "@/lib/animations";
 import TrackCard from "./TrackCard";
 import PlaylistCover from "./PlaylistCover";
+
+/** Number that counts up from 0 to its value on mount (instant under reduced motion). */
+function CountUp({ to, duration = 0.9 }: { to: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setDisplay(to);
+      return;
+    }
+    const controls = animate(0, to, {
+      duration,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setDisplay(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [to, duration, reduceMotion]);
+
+  return <>{display}</>;
+}
 
 type PlaylistResultProps = {
   data: GeneratedPlaylistResponse;
@@ -119,7 +140,9 @@ export default function PlaylistResult({
           <div className="mt-5">
             <div className="mb-1 flex justify-between text-xs text-muted">
               <span>Energy</span>
-              <span>{data.energy}%</span>
+              <span className="tabular-nums">
+                <CountUp to={data.energy} />%
+              </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-white/10">
               <motion.div
@@ -154,12 +177,25 @@ export default function PlaylistResult({
               Open playlist on Spotify
             </motion.a>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={copyLink}
               className="hover-lift rounded-full border border-white/12 bg-white/5 px-6 py-4 text-sm font-medium text-soft"
             >
-              {copied ? "Link copied ✓" : "Copy Spotify link"}
-            </button>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={copied ? "copied" : "copy"}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.16 }}
+                  className="block"
+                >
+                  {copied ? "Link copied ✓" : "Copy Spotify link"}
+                </motion.span>
+              </AnimatePresence>
+            </motion.button>
           </>
         ) : connected ? (
           <motion.button
@@ -184,12 +220,14 @@ export default function PlaylistResult({
           </motion.button>
         )}
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={onReset}
           className="hover-lift rounded-full border border-white/12 bg-white/5 px-6 py-4 text-sm font-medium text-soft"
         >
           Generate another vibe
-        </button>
+        </motion.button>
       </div>
 
       {/* New vs. existing playlist picker */}
@@ -265,13 +303,15 @@ export default function PlaylistResult({
               Updating an existing playlist replaces its current tracks with this new list.
             </p>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               onClick={confirmPush}
               disabled={pushing}
               className="spotify-glow mt-3 w-full rounded-xl bg-spotify py-2.5 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:opacity-60"
             >
               {pushing ? "Pushing…" : target === "new" ? "Create on Spotify" : "Update this playlist"}
-            </button>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -289,7 +329,9 @@ export default function PlaylistResult({
         animate="visible"
         className="mt-6 space-y-2"
       >
-        <p className="px-1 text-sm text-muted">{data.tracks.length} tracks</p>
+        <p className="px-1 text-sm tabular-nums text-muted">
+          <CountUp to={data.tracks.length} duration={0.7} /> tracks
+        </p>
         {data.tracks.map((track, i) => (
           <TrackCard key={`${track.id}-${i}`} track={track} index={i} />
         ))}

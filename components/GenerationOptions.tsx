@@ -30,6 +30,7 @@ import {
   cn,
 } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { springSnappy } from "@/lib/animations";
 
 // Language names shown in their own language — universal, no translation needed.
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -72,9 +73,15 @@ function Slider({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <label className="text-sm text-soft">{label}</label>
-        <span className="rounded-full bg-spotify/15 px-2.5 py-0.5 text-xs font-bold tabular-nums text-spotify-bright">
+        <motion.span
+          key={value}
+          initial={{ scale: 0.85, opacity: 0.6 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          className="rounded-full bg-spotify/15 px-2.5 py-0.5 text-xs font-bold tabular-nums text-spotify-bright"
+        >
           {value}
-        </span>
+        </motion.span>
       </div>
       <input
         type="range"
@@ -113,11 +120,12 @@ function PillGroup<T extends string>({
       <label className="mb-2 block text-sm text-soft">{label}</label>
       <div className="flex flex-wrap gap-1.5">
         {options.map((opt) => (
-          <button
+          <motion.button
             key={opt}
             type="button"
             disabled={disabled}
             onClick={() => onChange(opt)}
+            whileTap={{ scale: 0.94 }}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-medium transition-all",
               value === opt
@@ -126,7 +134,7 @@ function PillGroup<T extends string>({
             )}
           >
             {labels[opt]}
-          </button>
+          </motion.button>
         ))}
       </div>
     </div>
@@ -231,11 +239,10 @@ function Toggle({
           checked ? "bg-spotify" : "bg-white/15"
         )}
       >
-        <span
-          className={cn(
-            "absolute top-0.5 block size-5 rounded-full bg-white transition-transform",
-            checked ? "translate-x-5" : "translate-x-0.5"
-          )}
+        <motion.span
+          className="absolute top-0.5 block size-5 rounded-full bg-white"
+          animate={{ x: checked ? 20 : 2 }}
+          transition={springSnappy}
         />
       </button>
     </div>
@@ -420,9 +427,15 @@ export default function GenerationOptionsPanel({
                     <ListMusic className="size-4 text-spotify-bright" />
                     {opt.trackCount}
                   </label>
-                  <span className="rounded-full bg-spotify/15 px-3 py-1 text-sm font-bold tabular-nums text-spotify-bright">
+                  <motion.span
+                    key={value.trackCount}
+                    initial={{ scale: 0.85, opacity: 0.6 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="rounded-full bg-spotify/15 px-3 py-1 text-sm font-bold tabular-nums text-spotify-bright"
+                  >
                     {value.trackCount}
-                  </span>
+                  </motion.span>
                 </div>
                 <input
                   type="range"
@@ -474,9 +487,15 @@ export default function GenerationOptionsPanel({
                     <Flame className="size-4 text-spotify-bright" />
                     {opt.energy}
                   </label>
-                  <span className="rounded-full bg-spotify/15 px-3 py-1 text-sm font-bold tabular-nums text-spotify-bright">
+                  <motion.span
+                    key={value.energy}
+                    initial={{ scale: 0.85, opacity: 0.6 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="rounded-full bg-spotify/15 px-3 py-1 text-sm font-bold tabular-nums text-spotify-bright"
+                  >
                     {energyEmoji(value.energy)} {value.energy}%
-                  </span>
+                  </motion.span>
                 </div>
                 <input
                   type="range"

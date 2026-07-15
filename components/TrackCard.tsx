@@ -14,6 +14,7 @@ export default function TrackCard({ track, index }: { track: Track; index: numbe
       target="_blank"
       rel="noopener noreferrer"
       whileHover={{ x: 4 }}
+      whileTap={{ scale: 0.99 }}
       className="hover-lift group flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.03] p-3"
     >
       <span className="w-5 shrink-0 text-center text-sm tabular-nums text-muted/60">
@@ -27,7 +28,7 @@ export default function TrackCard({ track, index }: { track: Track; index: numbe
             alt={track.album || track.name}
             fill
             sizes="48px"
-            className="object-cover"
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
           />
         ) : (
           <div className="grid h-full w-full place-items-center text-muted">♪</div>
