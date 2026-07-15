@@ -150,6 +150,12 @@ function normalizeTrack(t: SpotifyTrackItem): Track {
   };
 }
 
+// Spotify's February 2026 API changes cut GET /search's `limit` max from
+// 50 to 10 (default 20 -> 5). A request above 10 now fails outright, so
+// every query silently returning zero results (via the caller's .catch())
+// used to look exactly like "no matching tracks" instead of a bad request.
+export const MAX_SEARCH_LIMIT = 10;
+
 /** Search Spotify for tracks matching a query. */
 export async function searchTracks(
   accessToken: string,
@@ -159,7 +165,7 @@ export async function searchTracks(
   const params = new URLSearchParams({
     q: query,
     type: "track",
-    limit: String(Math.min(Math.max(limit, 1), 50)),
+    limit: String(Math.min(Math.max(limit, 1), MAX_SEARCH_LIMIT)),
   });
   const res = await spotifyFetch(accessToken, `/search?${params.toString()}`);
   if (!res.ok) {

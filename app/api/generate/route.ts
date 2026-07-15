@@ -9,6 +9,7 @@ import {
   applyHardFilters,
   curateTracks,
   orderByProgression,
+  MAX_SEARCH_LIMIT,
 } from "@/lib/spotify";
 import { withFreshToken, spotifyFailureResponse } from "@/lib/spotify-session";
 import { generateMoodPlan, fallbackMoodPlan, OpenAIGenerationError } from "@/lib/openai";
@@ -89,10 +90,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Build the mood plan (fall back to a heuristic plan if OpenAI fails).
+  const uidTag = uid.slice(0, 6);
   let plan;
   try {
     plan = await generateMoodPlan(prompt, options);
   } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
     if (err instanceof OpenAIGenerationError) {
       // If OpenAI is simply not configured, surface a clear error; otherwise
       // degrade gracefully so the user still gets a playlist.
@@ -103,8 +106,16 @@ export async function POST(req: NextRequest) {
           502
         );
       }
+      console.error("[/api/generate] OpenAI generation failed, using fallback plan", {
+        uid: uidTag,
+        reason,
+      });
       plan = fallbackMoodPlan(prompt, options);
     } else {
+      console.error("[/api/generate] Unexpected error building mood plan, using fallback plan", {
+        uid: uidTag,
+        reason,
+      });
       plan = fallbackMoodPlan(prompt, options);
     }
   }
@@ -121,11 +132,23 @@ export async function POST(req: NextRequest) {
       return searchTracks(await getAppAccessToken(), query, limit);
     };
 
-    // Fetch more per query for longer playlists so filtering/dedup still
-    // leaves enough unique tracks to hit the requested count.
-    const perQuery = options.trackCount >= 20 ? 12 : 8;
+    // Request as many results per query as Spotify's Feb-2026-reduced
+    // `limit` cap allows — asking for more (the old 12/8 split, back when
+    // the max was 50) now fails the request outright instead of clamping.
+    // More search queries (up to 16, per the system prompt) make up for the
+    // lower per-query ceiling.
+    const perQuery = MAX_SEARCH_LIMIT;
     const results = await Promise.all(
-      plan.searchQueries.map((q) => searchWith(q, perQuery).catch(() => [] as Track[]))
+      plan.searchQueries.map((q) =>
+        searchWith(q, perQuery).catch((err) => {
+          console.error("[/api/generate] search query failed", {
+            uid: uidTag,
+            query: q,
+            reason: err instanceof Error ? err.message : String(err),
+          });
+          return [] as Track[];
+        })
+      )
     );
 
     // Dedupe by URI while remembering each track's best (lowest) rank within
@@ -154,6 +177,11 @@ export async function POST(req: NextRequest) {
     const filteredCandidates = candidates.filter((c) => allowedUris.has(c.track.uri));
 
     if (filteredCandidates.length === 0) {
+      console.error("[/api/generate] No tracks found after search + filters", {
+        uid: uidTag,
+        queries: plan.searchQueries.length,
+        rawCandidates: candidates.length,
+      });
       return errorResponse("No tracks found for this mood. Try a different vibe.", "no_tracks", 422);
     }
 
