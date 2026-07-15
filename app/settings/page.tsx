@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Gift, History } from "lucide-react";
 import Background from "@/components/Background";
 import LogoMark from "@/components/LogoMark";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
@@ -92,6 +92,29 @@ export default function SettingsPage() {
                   {user ? PLAN_LABELS[plan ?? "free"] : "—"}
                 </span>
               </div>
+            </div>
+          </motion.section>
+
+          <motion.section variants={fadeUp} className="glass-card mt-6 rounded-4xl p-6 sm:p-8">
+            <div className="space-y-2">
+              <Link
+                href="/parrainage"
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-soft transition-colors hover:border-white/20"
+              >
+                <span className="flex items-center gap-2">
+                  <Gift className="size-4 text-spotify-bright" />
+                  {t.settings.referralLink}
+                </span>
+              </Link>
+              <Link
+                href="/historique"
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-soft transition-colors hover:border-white/20"
+              >
+                <span className="flex items-center gap-2">
+                  <History className="size-4 text-spotify-bright" />
+                  {t.settings.historyLink}
+                </span>
+              </Link>
             </div>
           </motion.section>
         </motion.div>

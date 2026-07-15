@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
+import type { User } from "firebase/auth";
 import Link from "next/link";
 
 import Background from "@/components/Background";
@@ -22,6 +23,10 @@ import {
 import { getCurrentUserPlan } from "@/lib/plan-onboarding";
 import { fadeUp } from "@/lib/animations";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+
+// Persisted across the signup flow (e.g. redirect through onboarding) so the
+// referral code from a shared link isn't lost before the account exists.
+const REFERRAL_CODE_STORAGE_KEY = "mooddj_referral_code";
 
 export default function LoginPage() {
   return (
@@ -45,6 +50,35 @@ function LoginForm() {
 
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Capture a referral code from the URL (?ref=MOOD-XXXXXX) as soon as the
+  // page loads, in case the user browses around before actually signing up.
+  useEffect(() => {
+    const code = searchParams.get("ref");
+    if (!code) return;
+    try {
+      window.localStorage.setItem(REFERRAL_CODE_STORAGE_KEY, code);
+    } catch {
+      /* localStorage unavailable (private mode, etc.) — non-fatal */
+    }
+  }, [searchParams]);
+
+  /** Idempotent server-side — safe to call after every sign-in, not just signup. */
+  async function linkReferralIfNeeded(user: User) {
+    try {
+      const code = window.localStorage.getItem(REFERRAL_CODE_STORAGE_KEY);
+      const idToken = await user.getIdToken();
+      await fetch("/api/referral/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ code }),
+      });
+      window.localStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
+    } catch (linkError) {
+      console.error("[login] referral link failed", linkError);
+      // Never block sign-in over this.
+    }
+  }
 
   /**
    * Where to send the user right after they authenticate. A returning user
@@ -74,16 +108,12 @@ function LoginForm() {
     setLoading("email");
 
     try {
-      if (mode === "signup") {
-        await withAuthTimeout(
-          signUpWithEmail(email, password, name)
-        );
-      } else {
-        await withAuthTimeout(
-          signInWithEmail(email, password)
-        );
-      }
+      const user =
+        mode === "signup"
+          ? await withAuthTimeout(signUpWithEmail(email, password, name))
+          : await withAuthTimeout(signInWithEmail(email, password));
 
+      await linkReferralIfNeeded(user);
       await goAfterAuth();
     } catch (authError) {
       console.error("[login] email auth failed", authError);
@@ -98,7 +128,8 @@ function LoginForm() {
     setLoading("google");
 
     try {
-      await withAuthTimeout(signInWithGoogle());
+      const user = await withAuthTimeout(signInWithGoogle());
+      await linkReferralIfNeeded(user);
       await goAfterAuth();
     } catch (authError) {
       console.error("[login] google auth failed", authError);
@@ -113,7 +144,8 @@ function LoginForm() {
     setLoading("apple");
 
     try {
-      await withAuthTimeout(signInWithApple());
+      const user = await withAuthTimeout(signInWithApple());
+      await linkReferralIfNeeded(user);
       await goAfterAuth();
     } catch (authError) {
       console.error("[login] apple auth failed", authError);

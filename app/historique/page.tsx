@@ -1,0 +1,43 @@
+"use client";
+
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import Background from "@/components/Background";
+import LogoMark from "@/components/LogoMark";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { fadeUp, staggerContainer } from "@/lib/animations";
+import PlaylistHistoryList from "@/components/history/PlaylistHistoryList";
+
+export default function PlaylistHistoryPage() {
+  const { t } = useLanguage();
+
+  return (
+    <div className="relative min-h-screen">
+      <Background />
+
+      <div className="relative z-10 mx-auto max-w-3xl px-6 py-10">
+        <div className="mb-8 flex items-center justify-between">
+          <Link href="/app" className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-soft">
+            <ArrowLeft className="size-4" />
+            {t.history.back}
+          </Link>
+          <Link href="/" className="flex items-center gap-2.5">
+            <LogoMark size={28} />
+            <span className="text-sm font-semibold tracking-tight text-soft">Mood DJ</span>
+          </Link>
+        </div>
+
+        <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
+          <motion.h1 variants={fadeUp} className="text-3xl font-semibold text-soft">
+            {t.history.title}
+          </motion.h1>
+
+          <div className="mt-8">
+            <PlaylistHistoryList />
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

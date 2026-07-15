@@ -57,6 +57,34 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Referral program — see lib/referral.ts. Every write (code generation,
+    // linking, activation, tier-ups, credits) happens exclusively server-side
+    // via the Admin SDK, which bypasses these rules entirely. The client only
+    // ever reads.
+    match /referralProfiles/{uid} {
+      allow read: if request.auth != null; // needed for the friends leaderboard to read other profiles
+      allow write: if false;
+    }
+
+    match /referrals/{referralId} {
+      allow read: if request.auth != null
+        && (resource.data.referrerUid == request.auth.uid
+            || resource.data.refereeUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /rewardLedger/{ledgerId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Playlist history — see lib/playlist-history.ts. Written server-side
+    // only, from /api/generate right after a successful generation.
+    match /playlistHistory/{entryId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
