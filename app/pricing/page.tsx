@@ -89,7 +89,7 @@ function PricingContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-dvh overflow-hidden">
       <Background />
 
       <div className="relative z-10">
@@ -206,7 +206,7 @@ function PricingContent() {
 
 function PricingLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black text-white">
+    <main className="flex min-h-dvh items-center justify-center bg-black text-white">
       <div className="text-center">
         <Loader2 className="mx-auto size-9 animate-spin text-spotify" />
 

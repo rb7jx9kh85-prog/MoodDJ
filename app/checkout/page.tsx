@@ -188,10 +188,10 @@ function CheckoutContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-dvh overflow-hidden">
       <Background />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-2xl flex-col px-6 py-10">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-6 py-10">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between gap-4">
           <Link
@@ -421,7 +421,7 @@ function CheckoutContent() {
 
 function CheckoutLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black text-white">
+    <main className="flex min-h-dvh items-center justify-center bg-black text-white">
       <div className="text-center">
         <Loader2 className="mx-auto size-9 animate-spin text-spotify" />
         <p className="mt-4 text-sm text-white/60">Préparation du checkout…</p>

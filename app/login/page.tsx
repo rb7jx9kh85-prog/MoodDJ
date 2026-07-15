@@ -156,10 +156,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-dvh">
       <Background />
 
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16">
+      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-6 py-16">
         <div className="mb-8 flex w-full max-w-md items-center justify-between gap-4">
           <Link
             href="/"

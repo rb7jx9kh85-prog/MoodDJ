@@ -34,7 +34,7 @@ export default function SettingsPage() {
   }, [user]);
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-dvh">
       <Background />
 
       <div className="relative z-10 mx-auto max-w-2xl px-6 py-10">

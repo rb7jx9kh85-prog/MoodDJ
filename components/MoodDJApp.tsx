@@ -244,7 +244,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
   };
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
+    <main className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
       {/* Top bar: Mood DJ account + Spotify connection */}
       <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
         <AnimatedLogo size={32} withWordmark />

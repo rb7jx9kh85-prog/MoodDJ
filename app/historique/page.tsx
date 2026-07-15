@@ -13,7 +13,7 @@ export default function PlaylistHistoryPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-dvh">
       <Background />
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-10">
