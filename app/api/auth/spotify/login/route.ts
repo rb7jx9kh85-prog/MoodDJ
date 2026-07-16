@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   // CSRF protection: random state, stored signed in an httpOnly cookie.
   const state = randomBytes(16).toString("hex");
-  await setStateCookie(`${state}:${uid}`);
+  await setStateCookie(JSON.stringify({ purpose: "user", state, ownerUid: uid }));
 
   const params = new URLSearchParams({
     response_type: "code",

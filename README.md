@@ -77,6 +77,7 @@ SPOTIFY_CLIENT_SECRET=...
 SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/spotify/callback
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 COOKIE_SECRET=a-long-random-string
+MOODDJ_PUBLISHER_OWNER_UID=your-firebase-auth-uid
 ```
 
 > Generate a `COOKIE_SECRET` with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
@@ -123,6 +124,18 @@ npm run icons    # regenerate PWA / favicon icons from scripts/icon-source.svg
    ```
 5. Redeploy.
 6. Test: connect Spotify → generate a playlist.
+
+### Shared public Mood DJ Spotify account (optional)
+
+To let listeners publish a playlist publicly on one dedicated Mood DJ Spotify
+profile, set `MOODDJ_PUBLISHER_OWNER_UID` to the Firebase UID of the one
+administrator allowed to configure it. After redeploying, sign in as that
+administrator, open **Settings**, and select **Connect Mood DJ Spotify**.
+
+Spotify opens its normal OAuth consent screen so you can choose the dedicated
+Mood DJ account. The refresh token is encrypted server-side in Firestore and
+is never displayed in the browser. Do not put a Spotify password, access token,
+or refresh token in source control or Vercel client variables.
 
 > `SPOTIFY_REDIRECT_URI` must match the Spotify dashboard entry **character for
 > character**, including `https` and trailing path.

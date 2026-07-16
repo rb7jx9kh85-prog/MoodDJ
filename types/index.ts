@@ -172,6 +172,8 @@ export type GeneratedPlaylistResponse = {
   pushedToSpotify: boolean;
   spotifyPlaylistUrl?: string;
   playlistId?: string;
+  /** Whether Spotify publishing used the listener's account or Mood DJ's shared public profile. */
+  spotifyPublisher?: "user" | "mooddj";
   /** AI-generated cover art (Firebase Storage URL) — absent if generation failed or is disabled; the UI falls back to a gradient cover. */
   coverImageUrl?: string;
 };
@@ -180,6 +182,12 @@ export type GeneratedPlaylistResponse = {
 export type PushToSpotifyResponse = {
   spotifyPlaylistUrl: string;
   playlistId: string;
+  spotifyPublisher: "user" | "mooddj";
+};
+
+/** Payload returned after an on-demand OpenAI cover is uploaded to Spotify. */
+export type GenerateSpotifyCoverResponse = {
+  coverImageUrl: string;
 };
 
 /** A Spotify playlist owned by the connected user, for the "update existing" picker. */
@@ -219,6 +227,10 @@ export type ApiErrorCode =
   | "spotify_playlist_create_failed"
   | "spotify_tracks_add_failed"
   | "spotify_playlists_list_failed"
+  | "mooddj_publisher_not_configured"
+  | "publisher_setup_forbidden"
+  | "publisher_playlist_not_owned"
+  | "cover_generation_failed"
   | "no_tracks"
   | "playlist_partial"
   | "invalid_tracks"

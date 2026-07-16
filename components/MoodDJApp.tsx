@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import type {
   ApiError,
+  GenerateSpotifyCoverResponse,
   GeneratedPlaylistResponse,
   GenerationOptions,
   PushToSpotifyResponse,
@@ -50,6 +51,8 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<GeneratedPlaylistResponse | null>(null);
   const [pushing, setPushing] = useState(false);
+  const [covering, setCovering] = useState(false);
+  const [coverError, setCoverError] = useState<{ message: string; code: string } | null>(null);
   const [error, setError] = useState<{
     message: string;
     code: string;
@@ -254,9 +257,103 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     }
   };
 
+  /** Publish on Mood DJ's one shared, public Spotify profile — no personal Spotify connection required. */
+  const publishToMoodDJ = async () => {
+    if (!result || result.pushedToSpotify) return;
+    if (!firebaseUser) {
+      router.push("/login");
+      return;
+    }
+
+    setPushing(true);
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const res = await fetch("/api/publish-to-mooddj", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          playlistName: result.playlistName,
+          playlistDescription: result.playlistDescription,
+          trackUris: result.tracks.map((track) => track.uri),
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as ApiError;
+        setError({
+          message: data.error || "Mood DJ could not publish this playlist.",
+          code: data.code ?? `http_${res.status}`,
+          showConnect: false,
+          showLogin: data.code === "not_authenticated",
+          showUpgrade: data.code === "upgrade_required",
+        });
+        setStatus("error");
+        return;
+      }
+
+      const data = (await res.json()) as PushToSpotifyResponse;
+      setResult({ ...result, pushedToSpotify: true, ...data });
+      setCoverError(null);
+    } catch {
+      setError({
+        message: "Network error. Please check your connection and try again.",
+        code: "network_error",
+        showConnect: false,
+        showLogin: false,
+        showUpgrade: false,
+      });
+      setStatus("error");
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  /** Generate the optional OpenAI cover only after publishing succeeds. */
+  const generateSpotifyCover = async () => {
+    if (!result?.pushedToSpotify || !result.playlistId || !firebaseUser) return;
+
+    setCovering(true);
+    setCoverError(null);
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const res = await fetch("/api/spotify/generate-cover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          playlistId: result.playlistId,
+          publisher: result.spotifyPublisher ?? "user",
+          playlistName: result.playlistName,
+          vibe: result.vibe,
+          scene: result.scene,
+          genres: result.genres,
+          emotionalTone: result.emotionalTone,
+          energy: result.energy,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as ApiError;
+        setCoverError({
+          message: data.error || "Mood DJ could not create the AI cover.",
+          code: data.code ?? `http_${res.status}`,
+        });
+        return;
+      }
+
+      const data = (await res.json()) as GenerateSpotifyCoverResponse;
+      setResult({ ...result, coverImageUrl: data.coverImageUrl });
+    } catch {
+      setCoverError({
+        message: "Network error while creating the AI cover.",
+        code: "network_error",
+      });
+    } finally {
+      setCovering(false);
+    }
+  };
+
   const reset = () => {
     setStatus("idle");
     setResult(null);
+    setCoverError(null);
   };
 
   return (
@@ -360,7 +457,11 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
                 data={result}
                 connected={connected}
                 pushing={pushing}
+                covering={covering}
                 onPush={pushCurrentPlaylist}
+                onPublishPublic={publishToMoodDJ}
+                onGenerateCover={generateSpotifyCover}
+                coverError={coverError}
                 onConnect={goToSpotifyLogin}
                 onReset={reset}
               />

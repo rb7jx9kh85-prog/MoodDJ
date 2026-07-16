@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
     const response: PushToSpotifyResponse = {
       spotifyPlaylistUrl: playlistUrl,
       playlistId,
+      spotifyPublisher: "user",
     };
     return NextResponse.json(response);
   } catch (err) {

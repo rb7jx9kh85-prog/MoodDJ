@@ -344,6 +344,7 @@ export async function POST(req: NextRequest) {
       pushedToSpotify: true,
       spotifyPlaylistUrl: playlist.url,
       playlistId: playlist.id,
+      spotifyPublisher: "user",
     };
     await finalizeGeneration(uid, response);
     delivered = true;
