@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Gift, History } from "lucide-react";
+import { ArrowLeft, Check, Gift, History, Loader2, Music2 } from "lucide-react";
 import Background from "@/components/Background";
 import LogoMark from "@/components/LogoMark";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
@@ -22,6 +22,9 @@ export default function SettingsPage() {
   const { t, locale, setLocale } = useLanguage();
   const { user } = useFirebaseUser();
   const [plan, setPlan] = useState<string | null>(null);
+  const [publisher, setPublisher] = useState<{ configured: boolean; canConfigure: boolean } | null>(null);
+  const [publisherLoading, setPublisherLoading] = useState(false);
+  const [publisherError, setPublisherError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -32,6 +35,40 @@ export default function SettingsPage() {
         .catch(() => setPlan("free"));
     });
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setPublisher(null);
+      return;
+    }
+    user.getIdToken().then((idToken) =>
+      fetch("/api/spotify/publisher/status", { headers: { Authorization: `Bearer ${idToken}` } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setPublisher(data))
+        .catch(() => setPublisher(null))
+    );
+  }, [user]);
+
+  const connectMoodDJPublisher = async () => {
+    if (!user) return;
+    setPublisherLoading(true);
+    setPublisherError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/auth/spotify/publisher/login", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = (await res.json().catch(() => ({}))) as { authorizeUrl?: string; error?: string };
+      if (!res.ok || !data.authorizeUrl) {
+        throw new Error(data.error || "Could not start the Mood DJ Spotify connection.");
+      }
+      window.location.assign(data.authorizeUrl);
+    } catch (err) {
+      setPublisherError(err instanceof Error ? err.message : "Could not connect the public Spotify account.");
+      setPublisherLoading(false);
+    }
+  };
 
   return (
     <div className="relative min-h-dvh">
@@ -117,6 +154,37 @@ export default function SettingsPage() {
               </Link>
             </div>
           </motion.section>
+
+          {publisher?.canConfigure && (
+            <motion.section variants={fadeUp} className="glass-card mt-6 rounded-4xl p-6 sm:p-8">
+              <div className="flex items-start gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-spotify/15 text-spotify-bright">
+                  <Music2 className="size-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-soft">Mood DJ public Spotify</h2>
+                  <p className="mt-1 text-sm text-muted">
+                    This one-time connection is used to publish public Mood DJ playlists without asking listeners to connect Spotify.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={connectMoodDJPublisher}
+                disabled={publisherLoading}
+                className="spotify-glow mt-5 inline-flex items-center gap-2 rounded-full bg-spotify px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {publisherLoading && <Loader2 className="size-4 animate-spin" />}
+                {publisher.configured ? "Reconnect Mood DJ Spotify" : "Connect Mood DJ Spotify"}
+              </button>
+
+              {publisher.configured && (
+                <p className="mt-3 text-xs text-spotify-bright">Public publishing is connected.</p>
+              )}
+              {publisherError && <p className="mt-3 text-xs text-rose-300">{publisherError}</p>}
+            </motion.section>
+          )}
         </motion.div>
       </div>
     </div>

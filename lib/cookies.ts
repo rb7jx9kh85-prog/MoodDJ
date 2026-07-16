@@ -42,6 +42,20 @@ function open(value: string | undefined): string | undefined {
   }
 }
 
+/**
+ * Encrypt a server-side secret before persisting it in Firestore. This uses
+ * the same production-only key material as the OAuth cookies, but never
+ * exposes the value to the browser.
+ */
+export function sealServerSecret(value: string): string {
+  return seal(value);
+}
+
+/** Decrypt a secret previously stored by sealServerSecret(). */
+export function openServerSecret(value: string | undefined): string | null {
+  return open(value) ?? null;
+}
+
 /** Base options for secure, server-only cookies. */
 function baseOptions() {
   return {

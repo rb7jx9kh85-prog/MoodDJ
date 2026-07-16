@@ -14,7 +14,11 @@ type PlaylistResultProps = {
   data: GeneratedPlaylistResponse;
   connected: boolean;
   pushing: boolean;
+  covering: boolean;
   onPush: (existingPlaylistId?: string) => void;
+  onPublishPublic: () => void;
+  onGenerateCover: () => void;
+  coverError: { message: string; code: string } | null;
   onConnect: () => void;
   onReset: () => void;
 };
@@ -23,7 +27,11 @@ export default function PlaylistResult({
   data,
   connected,
   pushing,
+  covering,
   onPush,
+  onPublishPublic,
+  onGenerateCover,
+  coverError,
   onConnect,
   onReset,
 }: PlaylistResultProps) {
@@ -190,28 +198,55 @@ export default function PlaylistResult({
             >
               {copied ? "Link copied ✓" : "Copy Spotify link"}
             </button>
+
+            <button
+              onClick={onGenerateCover}
+              disabled={covering}
+              className="hover-lift rounded-full border border-spotify/30 bg-spotify/10 px-6 py-4 text-sm font-semibold text-spotify-bright transition-colors hover:bg-spotify/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {covering
+                ? "Creating AI cover…"
+                : data.coverImageUrl
+                  ? "Regenerate AI cover"
+                  : "Create AI cover"}
+            </button>
           </>
-        ) : connected ? (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={openPicker}
-            disabled={pushing}
-            className="spotify-glow flex flex-1 items-center justify-center gap-2 rounded-full bg-spotify px-6 py-4 text-base font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <SpotifyGlyph />
-            {pushing ? "Pushing to Spotify…" : "Push this playlist to Spotify"}
-          </motion.button>
         ) : (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onConnect}
-            className="spotify-glow flex flex-1 items-center justify-center gap-2 rounded-full bg-spotify px-6 py-4 text-base font-semibold text-black transition-colors hover:bg-spotify-bright"
-          >
-            <SpotifyGlyph />
-            Connect Spotify to push this playlist
-          </motion.button>
+          <>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onPublishPublic}
+              disabled={pushing}
+              className="spotify-glow flex flex-1 items-center justify-center gap-2 rounded-full bg-spotify px-6 py-4 text-base font-semibold text-black transition-colors hover:bg-spotify-bright disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <SpotifyGlyph />
+              {pushing ? "Publishing…" : "Publish publicly on Mood DJ Spotify"}
+            </motion.button>
+
+            {connected ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={openPicker}
+                disabled={pushing}
+                className="hover-lift flex flex-1 items-center justify-center gap-2 rounded-full border border-white/12 bg-white/5 px-6 py-4 text-base font-semibold text-soft transition-colors hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <SpotifyGlyph />
+                Push to my Spotify
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onConnect}
+                className="hover-lift flex flex-1 items-center justify-center gap-2 rounded-full border border-white/12 bg-white/5 px-6 py-4 text-base font-semibold text-soft transition-colors hover:border-white/25"
+              >
+                <SpotifyGlyph />
+                Connect my Spotify instead
+              </motion.button>
+            )}
+          </>
         )}
 
         <button
@@ -221,6 +256,15 @@ export default function PlaylistResult({
           Generate another vibe
         </button>
       </div>
+
+      {data.pushedToSpotify && coverError && (
+        <div className="mt-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <p>{coverError.message}</p>
+          <p className="mt-1 font-mono text-xs uppercase tracking-wide text-rose-200/70">
+            Error code: {coverError.code}
+          </p>
+        </div>
+      )}
 
       {/* Invite a friend — reuses the referral program's share component */}
       {data.pushedToSpotify && data.spotifyPlaylistUrl && referralCode && (
@@ -325,9 +369,10 @@ export default function PlaylistResult({
       </AnimatePresence>
 
       {!data.pushedToSpotify && (
-        <p className="mt-3 text-center text-xs text-muted">
-          This is a preview — nothing has been created on Spotify yet.
-        </p>
+        <div className="mt-3 text-center text-xs text-muted">
+          <p>This is a preview — nothing has been created on Spotify yet.</p>
+          <p className="mt-1">Publishing on Mood DJ Spotify creates a public playlist on the shared Mood DJ account.</p>
+        </div>
       )}
 
       {/* Track list */}

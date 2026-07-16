@@ -191,14 +191,15 @@ type SpotifyPlaylist = {
 export async function createPlaylist(
   accessToken: string,
   name: string,
-  description: string
+  description: string,
+  isPublic = false
 ): Promise<{ id: string; url: string }> {
   const res = await spotifyFetch(accessToken, `/me/playlists`, {
     method: "POST",
     body: JSON.stringify({
       name,
       description,
-      public: false,
+      public: isPublic,
     }),
   });
   if (!res.ok) {
