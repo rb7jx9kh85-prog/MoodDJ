@@ -34,6 +34,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/** Keep optional artwork from holding the whole playlist request hostage. */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function errorResponse(message: string, code: ApiErrorCode, status: number) {
   return NextResponse.json({ error: message, code }, { status });
 }
@@ -187,11 +202,14 @@ export async function POST(req: NextRequest) {
     // uses the app's own Client Credentials token (no user involved at
     // all); a push request reuses the user's token since we'll need it
     // right after anyway.
+    // Resolve the app token once. Calling getAppAccessToken() inside every
+    // concurrent query creates a token-request stampede on cold instances.
+    const appAccessToken = pushToSpotify ? null : await getAppAccessToken();
     const searchWith = async (query: string, limit: number): Promise<Track[]> => {
       if (pushToSpotify && userAccessToken) {
         return withFreshToken(userAccessToken, (t) => searchTracks(t, query, limit));
       }
-      return searchTracks(await getAppAccessToken(), query, limit);
+      return searchTracks(appAccessToken!, query, limit);
     };
 
     // Request as many results per query as Spotify's Feb-2026-reduced
@@ -203,9 +221,13 @@ export async function POST(req: NextRequest) {
     // Cover art runs alongside the Spotify searches (not after) so it adds
     // no perceived latency — generated for every playlist, preview or not.
     const coverId = randomUUID();
+    // Eight good queries are enough to curate a full playlist. The model can
+    // return up to sixteen for quality, but firing all of them at Spotify is
+    // slow and increases the chance of transient rate limits.
+    const searchQueries = plan.searchQueries.slice(0, 8);
     const [results, cover] = await Promise.all([
       Promise.all(
-        plan.searchQueries.map((q) =>
+        searchQueries.map((q) =>
           searchWith(q, perQuery).catch((err) => {
             console.error("[/api/generate] search query failed", {
               uid: uidTag,
@@ -216,7 +238,9 @@ export async function POST(req: NextRequest) {
           })
         )
       ),
-      generateCoverArt(uid, coverId, plan),
+      // Cover art is optional and expensive. Preview generation must return
+      // quickly; for a Spotify push, give image generation at most 12s.
+      pushToSpotify ? withTimeout(generateCoverArt(uid, coverId, plan), 12_000) : Promise.resolve(null),
     ]);
 
     // Dedupe by URI while remembering each track's best (lowest) rank within

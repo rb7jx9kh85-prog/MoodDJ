@@ -157,12 +157,15 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     }
 
     setStatus("loading");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 50_000);
     try {
       const idToken = await firebaseUser.getIdToken();
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ prompt, pushToSpotify, options }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -180,15 +183,20 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       const data = (await res.json()) as GeneratedPlaylistResponse;
       setResult(data);
       setStatus("result");
-    } catch {
+    } catch (err) {
+      const timedOut = err instanceof DOMException && err.name === "AbortError";
       setError({
-        message: "Network error. Please check your connection and try again.",
-        code: "network_error",
+        message: timedOut
+          ? "La génération prend trop de temps. Réessaie avec un mood plus simple."
+          : "Network error. Please check your connection and try again.",
+        code: timedOut ? "generation_timeout" : "network_error",
         showConnect: false,
         showLogin: false,
         showUpgrade: false,
       });
       setStatus("error");
+    } finally {
+      window.clearTimeout(timeout);
     }
   };
 
