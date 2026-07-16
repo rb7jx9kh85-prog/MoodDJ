@@ -5,6 +5,7 @@ import Link from "next/link";
 
 type ErrorCardProps = {
   message: string;
+  code?: string;
   showConnect?: boolean;
   showLogin?: boolean;
   showUpgrade?: boolean;
@@ -14,6 +15,7 @@ type ErrorCardProps = {
 
 export default function ErrorCard({
   message,
+  code,
   showConnect,
   showLogin,
   showUpgrade,
@@ -30,6 +32,11 @@ export default function ErrorCard({
         !
       </div>
       <p className="mt-4 text-lg text-soft">{message}</p>
+      {code && (
+        <p className="mt-2 font-mono text-xs uppercase tracking-wide text-muted/70">
+          Error code: {code}
+        </p>
+      )}
 
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {showConnect && onConnect && (

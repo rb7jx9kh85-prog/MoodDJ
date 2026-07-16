@@ -204,6 +204,8 @@ export type ApiErrorCode =
   | "not_connected"
   | "session_expired"
   | "not_authenticated"
+  | "email_not_verified"
+  | "rate_limited"
   | "quota_exceeded"
   | "upgrade_required"
   | "empty_prompt"

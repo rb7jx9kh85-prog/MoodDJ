@@ -28,7 +28,6 @@ import {
 import { recordPlaylistHistory } from "@/lib/playlist-history";
 import { recordPlaylistGenerated, activateReferralIfEligible } from "@/lib/referral";
 import { enforceRateLimit, RateLimitError } from "@/lib/rate-limit";
-import { getAdminAuth } from "@/lib/firebase-admin";
 
 // firebase-admin (via lib/quota) needs Node APIs, not the Edge runtime.
 export const runtime = "nodejs";
@@ -69,13 +68,9 @@ export async function POST(req: NextRequest) {
   if (!uid) {
     return errorResponse("Sign in to your Mood DJ account first.", "not_authenticated", 401);
   }
-  const authUser = await getAdminAuth().getUser(uid);
-  if (!authUser.emailVerified) {
-    return NextResponse.json(
-      { error: "Verify your email before generating a playlist.", code: "email_not_verified" },
-      { status: 403 }
-    );
-  }
+  // Email verification is only required to claim referral/welcome credits.
+  // It must not block the core preview generation flow: users can generate
+  // without Spotify and without waiting for an email link.
   try {
     await enforceRateLimit("generate", uid, 6, 60);
   } catch (err) {

@@ -52,11 +52,13 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<{
     message: string;
+    code: string;
     showConnect: boolean;
     showLogin: boolean;
     showUpgrade: boolean;
   }>({
     message: authError ? "Your Spotify connection failed. Please connect again." : "",
+    code: authError ? "spotify_callback_error" : "",
     showConnect: Boolean(authError),
     showLogin: false,
     showUpgrade: false,
@@ -79,6 +81,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     } catch {
       setError({
         message: "Could not start Spotify connection. Please try again.",
+        code: "spotify_login_start_failed",
         showConnect: true,
         showLogin: false,
         showUpgrade: false,
@@ -141,6 +144,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
       setStatus("error");
       setError({
         message: "Describe a vibe before generating your playlist.",
+        code: "empty_prompt",
         showConnect: false,
         showLogin: false,
         showUpgrade: false,
@@ -163,11 +167,12 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as ApiError;
+        const code = data.code ?? `http_${res.status}`;
         const showConnect = needsSpotifyReconnect(data);
         const showLogin = data.code === "not_authenticated";
         const showUpgrade = data.code === "quota_exceeded" || data.code === "upgrade_required";
         if (showConnect) setConnected(false);
-        setError({ message: data.error || "Something went wrong. Please try again.", showConnect, showLogin, showUpgrade });
+        setError({ message: data.error || `Request failed (HTTP ${res.status}).`, code, showConnect, showLogin, showUpgrade });
         setStatus("error");
         return;
       }
@@ -178,6 +183,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     } catch {
       setError({
         message: "Network error. Please check your connection and try again.",
+        code: "network_error",
         showConnect: false,
         showLogin: false,
         showUpgrade: false,
@@ -215,6 +221,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
         if (showConnect) setConnected(false);
         setError({
           message: data.error || "Could not push this playlist to Spotify.",
+          code: data.code ?? `http_${res.status}`,
           showConnect,
           showLogin,
           showUpgrade,
@@ -228,6 +235,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
     } catch {
       setError({
         message: "Network error. Please check your connection and try again.",
+        code: "network_error",
         showConnect: false,
         showLogin: false,
         showUpgrade: false,
@@ -354,6 +362,7 @@ export default function MoodDJApp({ initialConnected, authError }: MoodDJAppProp
             <motion.div key="error" exit={{ opacity: 0 }}>
               <ErrorCard
                 message={error.message}
+                code={error.code}
                 showConnect={error.showConnect}
                 showLogin={error.showLogin}
                 showUpgrade={error.showUpgrade}
