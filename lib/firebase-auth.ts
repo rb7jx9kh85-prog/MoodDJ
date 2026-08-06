@@ -6,6 +6,7 @@ import {
   OAuthProvider,
   updateProfile,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signOut,
   type User,
 } from "firebase/auth";
@@ -53,7 +54,9 @@ export async function ensureUserProfile(
     photoURL: user.photoURL ?? null,
 
     // Le plan réellement actif.
-    // Seul Stripe devra pouvoir le modifier plus tard.
+    // Seuls /api/checkout/create et le webhook Whop pourront le modifier
+    // ensuite (voir firestore.rules — le client ne peut plus le toucher
+    // une fois ce document créé).
     plan: "free",
 
     // Le plan choisi pendant l’onboarding.
@@ -64,6 +67,22 @@ export async function ensureUserProfile(
 
     createdAt: serverTimestamp(),
   });
+}
+
+/**
+ * Best-effort wrapper: never let a Firestore hiccup here turn a successful
+ * Firebase Auth sign-in/sign-up into a hard failure. If this fails, the
+ * account still exists and the next call to ensureUserProfile (next sign-in,
+ * or the free-plan write via the Admin SDK from /api/checkout/create) will
+ * retry it — self-healing instead of stranding the user with a working Auth
+ * account but no Firestore profile and a confusing error message.
+ */
+async function ensureUserProfileBestEffort(user: User): Promise<void> {
+  try {
+    await ensureUserProfileBestEffort(user);
+  } catch (err) {
+    console.error("[auth] ensureUserProfile failed (non-fatal, will retry on next sign-in)", err);
+  }
 }
 
 export async function signUpWithEmail(
@@ -84,7 +103,7 @@ export async function signUpWithEmail(
     });
   }
 
-  await ensureUserProfile(user);
+  await ensureUserProfileBestEffort(user);
 
   // Google/Apple sign-in are pre-verified by their provider; email/password
   // is the only path that needs this — required before any referral reward
@@ -111,7 +130,7 @@ export async function signInWithEmail(
       password
     );
 
-  await ensureUserProfile(user);
+  await ensureUserProfileBestEffort(user);
 
   return user;
 }
@@ -124,7 +143,7 @@ export async function signInWithGoogle(): Promise<User> {
     provider
   );
 
-  await ensureUserProfile(user);
+  await ensureUserProfileBestEffort(user);
 
   return user;
 }
@@ -144,7 +163,7 @@ export async function signInWithApple(): Promise<User> {
     provider
   );
 
-  await ensureUserProfile(user);
+  await ensureUserProfileBestEffort(user);
 
   return user;
 }
@@ -156,6 +175,15 @@ export async function signOutUser(): Promise<void> {
 /** Re-sends the verification email (e.g. from the referral page, if the first one was missed). */
 export async function resendEmailVerification(user: User): Promise<void> {
   await sendEmailVerification(user);
+}
+
+/**
+ * Sends a password-reset email. Firebase itself doesn't reveal whether the
+ * address is registered (the request resolves the same way either way), so
+ * the caller should always show a neutral "check your inbox" message.
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  await sendPasswordResetEmail(getFirebaseAuth(), email);
 }
 
 export class AuthTimeoutError extends Error {

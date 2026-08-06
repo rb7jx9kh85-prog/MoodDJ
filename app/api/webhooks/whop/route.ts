@@ -8,16 +8,28 @@ import { verifyWhopWebhookSignature } from "@/lib/whop";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type WhopMetadata = { firebaseUid?: string; mooddjPlan?: string };
+
 type WhopWebhookPayload = {
   id?: string;
   event?: string;
   action?: string;
+  // The exact payload shape isn't confirmed against a real Whop delivery yet
+  // (their docs don't publish the full payment.succeeded schema) — metadata
+  // is read from both places it plausibly lives so this doesn't silently
+  // break on whichever shape Whop actually sends.
+  metadata?: WhopMetadata;
   data?: {
     id?: string;
     status?: string;
-    metadata?: { firebaseUid?: string; mooddjPlan?: string };
+    metadata?: WhopMetadata;
   };
 };
+
+/** Firestore doc IDs can't contain "/" and have a length cap; mirrors the sanitization in lib/rate-limit.ts. */
+function safeDocId(raw: string): string {
+  return raw.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 128);
+}
 
 /**
  * Receives Whop's payment/membership webhooks and is the ONLY place that
@@ -61,19 +73,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  const eventId = payload.id ?? payload.data?.id;
-  const uid = payload.data?.metadata?.firebaseUid;
-  const planRaw = payload.data?.metadata?.mooddjPlan;
+  const rawEventId = payload.id ?? payload.data?.id;
+  const metadata = payload.data?.metadata ?? payload.metadata;
+  const uid = metadata?.firebaseUid;
+  const planRaw = metadata?.mooddjPlan;
 
-  if (!eventId || !uid || !isSelectablePlan(planRaw) || planRaw === "free") {
+  if (!rawEventId || !uid || !isSelectablePlan(planRaw) || planRaw === "free") {
     console.error("[/api/webhooks/whop] payment.succeeded missing expected metadata", {
-      eventId,
+      rawEventId,
       uid,
       planRaw,
     });
     return NextResponse.json({ error: "invalid_metadata" }, { status: 400 });
   }
 
+  const eventId = safeDocId(rawEventId);
   const plan = planRaw as SelectablePlan;
   const db = getAdminDb();
 
@@ -103,7 +117,7 @@ export async function POST(req: NextRequest) {
           paymentStatus: "paid",
           billingCurrency: catalogEntry.currency,
           finalPriceCents: catalogEntry.priceCents,
-          whopPaymentId: eventId,
+          whopPaymentId: rawEventId,
           checkoutUpdatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }

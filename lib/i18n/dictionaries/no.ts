@@ -171,6 +171,12 @@ const no: Dictionary = {
     google: "Fortsett med Google",
     apple: "Fortsett med Apple",
     consent: "Ved å fortsette godtar du at Mood DJ oppretter en profil for kontoen din.",
+    forgotPassword: "Glemt passord?",
+    forgotPasswordEmailRequired: "Skriv inn e-postadressen din først.",
+    forgotPasswordSent: "Hvis en konto finnes med denne adressen, er en e-post for tilbakestilling nettopp sendt.",
+    emailInUseSwitchToSignIn: "Det finnes allerede en konto med denne e-posten — logg inn i stedet.",
+    stillWorking: "Dette tar lengre tid enn forventet. Hvis det lykkes, blir du automatisk videresendt.",
+    tooManyAttempts: "For mange forsøk. Prøv igjen om {seconds}s.",
   },
   app: {
     spotifyConnected: "Spotify tilkoblet",

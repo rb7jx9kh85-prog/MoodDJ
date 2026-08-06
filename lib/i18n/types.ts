@@ -93,6 +93,12 @@ export type Dictionary = {
     google: string;
     apple: string;
     consent: string;
+    forgotPassword: string;
+    forgotPasswordEmailRequired: string;
+    forgotPasswordSent: string;
+    emailInUseSwitchToSignIn: string;
+    stillWorking: string;
+    tooManyAttempts: string;
   };
   app: {
     spotifyConnected: string;
