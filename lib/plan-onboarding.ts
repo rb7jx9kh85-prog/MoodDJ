@@ -1,7 +1,7 @@
 import { doc, getDoc } from "firebase/firestore";
 
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
-import type { CheckoutCompleteResponse } from "@/app/api/checkout/complete/route";
+import type { CheckoutCreateResponse } from "@/app/api/checkout/create/route";
 import type { SelectablePlan } from "@/lib/plans";
 
 export type { SelectablePlan };
@@ -44,15 +44,15 @@ export async function getCurrentUserPlan(): Promise<UserPlanProfile | null> {
 }
 
 /**
- * Runs the fake checkout: the browser never writes plan/selectedPlan/price
- * fields to Firestore itself (firestore.rules forbids it). Instead this
- * calls the server, which verifies the caller's identity, recomputes the
- * price + discount itself, and activates the plan with the Admin SDK.
+ * Starts a real checkout: the browser never writes plan/selectedPlan/price
+ * fields to Firestore itself (firestore.rules forbids it). The server
+ * activates the free plan directly, or creates a Whop checkout session and
+ * returns its URL for paid plans — the plan only actually turns "active" once
+ * the Whop webhook confirms payment (see app/api/webhooks/whop/route.ts).
  */
-export async function completeFakeCheckout(
-  selectedPlan: SelectablePlan,
-  discountCode?: string | null
-): Promise<CheckoutCompleteResponse> {
+export async function createCheckout(
+  selectedPlan: SelectablePlan
+): Promise<CheckoutCreateResponse> {
   const user = getFirebaseAuth().currentUser;
 
   if (!user) {
@@ -61,16 +61,13 @@ export async function completeFakeCheckout(
 
   const idToken = await user.getIdToken();
 
-  const res = await fetch("/api/checkout/complete", {
+  const res = await fetch("/api/checkout/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({
-      plan: selectedPlan,
-      discountCode: discountCode ?? null,
-    }),
+    body: JSON.stringify({ plan: selectedPlan }),
   });
 
   if (!res.ok) {
@@ -83,10 +80,12 @@ export async function completeFakeCheckout(
         throw new Error("Ce plan n'existe pas. Retourne sur la page tarifs.");
       case "invalid_request":
         throw new Error("Requête invalide. Réessaie.");
+      case "checkout_unavailable":
+        throw new Error("Le paiement est momentanément indisponible. Réessaie dans un instant.");
       default:
-        throw new Error(data.error || "Vous n’êtes pas autorisé à utiliser le service.");
+        throw new Error(data.error || "Une erreur est survenue. Réessaie.");
     }
   }
 
-  return res.json() as Promise<CheckoutCompleteResponse>;
+  return res.json() as Promise<CheckoutCreateResponse>;
 }
